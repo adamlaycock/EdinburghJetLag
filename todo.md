@@ -6,6 +6,6 @@
 - [ ] Challenge deck
   - [ ] Live available challenges (5?)
 - [ ] Reward deck
-  - [ ] Private hands
+  - [ ] Private hands (5?)
 - [ ] Location updates
 - [ ] Alert system
