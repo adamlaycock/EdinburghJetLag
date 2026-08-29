@@ -1,0 +1,11 @@
+- [ ] Live map of regions
+  - [ ] Show status effects and effect times
+- [ ] Scoring system & live scoreboard
+- [ ] Team assignment
+  - [ ] Support for different numbers of teams between games
+- [ ] Challenge deck
+  - [ ] Live available challenges (5?)
+- [ ] Reward deck
+  - [ ] Private hands
+- [ ] Location updates
+- [ ] Alert system
