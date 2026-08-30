@@ -2,8 +2,9 @@
   - [x] Status effects
   - [ ] Status times
 - [ ] Scoring system & live scoreboard
-- [ ] Team assignment
+- [x] Team assignment
   - [ ] Support for different numbers of teams between games
+  - [ ] Lock team changes after game start
 - [ ] Challenge deck
   - [ ] Live available challenges (5?)
 - [ ] Reward deck
