@@ -1,68 +1,60 @@
 import random as r
+from typing import List, Optional
 
 class Card:
-    def __init__(self, title: str, description: str, card_type: str):
+    def __init__(self, title: str, description: str, type: str):
         self.title = title
         self.description = description
-        self.card_type = card_type
+        self.type = type
 
     def __repr__(self):
-        return f"[{self.card_type}: {self.title} - {self.description}]"
+        return f"[{self.title} ({self.type}) - {self.description}]"
 
 class ChallengeCard(Card):
-    def __init__(self, title: str, description: str, duration: int):
-        super().__init__(title, description, card_type="Challenge")
+    def __init__(self, title: str, description: str, type: str, duration: str):
+        super().__init__(title, description, type)
         self.duration = duration
 
+class RewardCard(Card):
+    def __init__(self, title: str, description: str, type: str, reward_type: str):
+        super().__init__(title, description, type)
+        self.reward_type = reward_type
+
     def __repr__(self):
-        return f"[Challenge: {self.title} - '{self.description}' ({self.duration})]"
+        return f"[{self.title} ({self.reward_type}) - {self.description}]"
 
-class Deck:
-    def __init__(self, cards: list):
-        self.cards = cards
-        self.dealt_cards = {}
-        self.shuffle()
+class CardContainer:
+    def __init__(self, cards: Optional[List[Card]] = None):
+        self.cards = list(cards) if cards is not None else []
+        if self.cards:
+            self.shuffle()
 
-    def shuffle(self):
+    def shuffle(self) -> None:
         r.shuffle(self.cards)
 
-    def deal_card(self, recipient: "Team", mode: str):
-        if len(self.cards) == 0:
+    def remove_card(self) -> Optional[Card]:
+        if not self.cards:
             return None
 
-        if mode == "challenge":
-             if not recipient.has_challenge_space():
-                  return None
-        else:
-            if not recipient.has_hand_space():
-                return None
+        return self.cards.pop()
 
-        drawn_card = self.cards.pop()
-        
-        recipient.add_card(drawn_card, mode=mode)
-        
-        self.dealt_cards[drawn_card] = recipient.name
-        return drawn_card
-
-    def return_card(self, card: Card, donor: "Team"):
-        if card in self.dealt_cards:
-            del self.dealt_cards[card]
-
-        donor.remove_card(card.title) 
+    def add_card(self, card: Card) -> None:
         self.cards.append(card)
-        self.shuffle()
 
-    def get_owner(self, card: Card):
-        return self.dealt_cards.get(card)
+    def __len__(self):
+        return len(self.cards)
+
+    def __repr__(self):
+        return f"[CardContainer with {len(self.cards)} cards]"
 
 class Team:
-    def __init__(self, name: str, members: list, max_hand_size: int = 5, max_challenges: int = 1):
+    def __init__(self, name: str, members: List[str], max_hand_size: int = 5, max_challenges: int =1):
         self.name = name
         self.members = members
         self.max_hand_size = max_hand_size
-        self.max_challenges = max_challenges 
-        self.hand = []
-        self.active_challenges = []
+        self.max_challenges = max_challenges
+        self.hand = CardContainer()
+        self.active_challenges = CardContainer()
 
     def has_hand_space(self) -> bool:
         return len(self.hand) < self.max_hand_size
@@ -70,30 +62,5 @@ class Team:
     def has_challenge_space(self) -> bool:
         return len(self.active_challenges) < self.max_challenges
 
-    def add_card(self, card: Card, mode: str = "reward") -> bool:
-        if mode == "challenge":
-            if not self.has_challenge_space():
-                return False
-            self.active_challenges.append(card)
-            return True
-        else:
-            if not self.has_hand_space():
-                return False
-            self.hand.append(card)
-            return True
-
-    def remove_card(self, title: str):
-        for card in self.hand:
-            if card.title.lower() == title.lower():
-                self.hand.remove(card)
-                return card 
-            
-        for card in self.active_challenges:
-            if card.title.lower() == title.lower():
-                self.active_challenges.remove(card)
-                return card
-        print(f"Card '{title}' not found in {self.name}'s items.")
-        return None
-
     def __repr__(self):
-        return f"Team: '{self.name}' (Hand: {len(self.hand)}/{self.max_hand_size} cards | Active Challenges: {len(self.active_challenges)}/{self.max_challenges})"
+        return f"[Team: {self.name} - Hand: {len(self.hand)}/{self.max_hand_size} - Active Challenges: {len(self.active_challenges)}]"
