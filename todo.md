@@ -1,5 +1,6 @@
 - [ ] Live map of regions
-  - [ ] Show status effects and effect times
+  - [x] Status effects
+  - [ ] Status times
 - [ ] Scoring system & live scoreboard
 - [ ] Team assignment
   - [ ] Support for different numbers of teams between games
