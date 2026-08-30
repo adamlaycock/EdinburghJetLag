@@ -8,7 +8,7 @@ import pandas as pd
 # Read game board GeoJSON and format "control"
 gdf = gpd.read_file(
     "MapData/Board/GameBoard.geojson"
-)
+).merge(pd.read_csv("area_initial_attributes.csv"), on="area_name", how="inner")
 gdf["control"] = pd.Categorical(
     gdf["control"], 
     categories=["Team A", "Team B", "Team C", "Unclaimed"]
@@ -19,9 +19,9 @@ color_list = ["#FF0000", "#FFFF00", "#0000FF", "#808080"]
 minx, miny, maxx, maxy = gdf.total_bounds
 
 def style_status(feature):
-    status = feature["properties"].get("status")
+    protection = feature["properties"].get("is_protected")
 
-    if status == "Protected":
+    if protection:
         return {
             "color": "#111111",
             "weight": 4,
@@ -40,7 +40,7 @@ m = gdf.explore(
     cmap=color_list,
     categorical=True,
     tooltip=False,
-    popup=["area_name", "control", "status", "status_time"],
+    popup=["area_name", "control", "is_protected"],
     tiles="OpenStreetMap",
     style_kwds=dict(style_function=style_status),
 )

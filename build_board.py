@@ -72,10 +72,14 @@ clipped_eh_polygons[["relative_area", "relative_centroid_dist"]] = scaler.fit_tr
     clipped_eh_polygons[["relative_area", "relative_centroid_dist"]]
 )
 clipped_eh_polygons["control"] = "Unclaimed"
-clipped_eh_polygons["status"] = ""
-clipped_eh_polygons["status_time"] = ""
+clipped_eh_polygons["is_protected"] = False
+clipped_eh_polygons["protection_start"] = None
+clipped_eh_polygons["protection_end"] = None
 
-# Export as GeoJSON
-clipped_eh_polygons.to_file(
+clipped_eh_geometry = clipped_eh_polygons[["PostDist", "geometry", "relative_area", "relative_centroid_dist"]]
+clipped_eh_attributes = clipped_eh_polygons.drop(columns=["geometry", "relative_area", "relative_centroid_dist"])
+
+clipped_eh_geometry.to_file(
     "MapData/Board/GameBoard.geojson", driver="GeoJSON"
 )
+clipped_eh_attributes.to_csv("area_initial_attributes.csv", index=False)
