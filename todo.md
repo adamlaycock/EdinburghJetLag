@@ -5,9 +5,14 @@
 - [x] Team assignment
   - [ ] Support for different numbers of teams between games
   - [ ] Lock team changes after game start
-- [ ] Challenge deck
-  - [ ] Live available challenges (5?)
-- [ ] Reward deck
-  - [ ] Private hands (5?)
+- [ ] Card management
+  - [x] Card class
+  - [x] Card container class
+    - [x] Team hands (max 5)
+    - [x] Team active challenge (max 1)
+    - [ ] Global active challenges (max 5)
+    - [ ] Discarded cards
+    - [ ] Reward deck (curses and powerups)
+    - [ ] Challenge deck
 - [ ] Location updates
 - [ ] Alert system
