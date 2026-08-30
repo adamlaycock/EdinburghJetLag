@@ -3,10 +3,13 @@
   - [ ] Status times
 - [ ] Scoring system & live scoreboard
 - [x] Team assignment
+  - [ ] Redesign to support Card & Team classes 
   - [ ] Support for different numbers of teams between games
   - [ ] Lock team changes after game start
 - [ ] Card management
   - [x] Card class
+    - [x] Challenge cards
+    - [x] Reward cards
   - [x] Card container class
     - [x] Team hands (max 5)
     - [x] Team active challenge (max 1)
