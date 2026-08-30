@@ -53,4 +53,5 @@ m.options["zoomSnap"] = 0.1
 m.options["minZoom"] = 12.5
 
 # Display map
+st.title("Game Map")
 st_folium(m, width=700, height=500, returned_objects=[])

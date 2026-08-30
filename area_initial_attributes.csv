@@ -2,7 +2,7 @@ area_name,control,is_protected,protection_start,protection_end
 EH10,Unclaimed,False,,
 EH11,Unclaimed,False,,
 EH12,Unclaimed,False,,
-EH2,Unclaimed,False,,
+EH2,Unclaimed,True,,
 EH4,Unclaimed,False,,
 EH5,Unclaimed,False,,
 EH16,Unclaimed,False,,
