@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 import pandas as pd
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
+import datetime
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -48,8 +49,11 @@ class CardContainer:
     def shuffle(self) -> None:
         r.shuffle(self.cards)
 
-    def remove_card(self) -> Optional[Card]:
-        return self.cards.pop() if self.cards else None
+    def remove_card(self, card: Card) -> Optional[Card]:
+        if card in self.cards:
+            self.cards.remove(card)
+            return card
+        return None
 
     def add_card(self, card: Card) -> None:
         self.cards.append(card)
@@ -65,12 +69,90 @@ class CardContainer:
 
     @classmethod
     def from_json(cls, name: str, json_str: str) -> "CardContainer":
-        if not json_str or json_str == "[]":
+        if not json_str or json_str.strip() in ("", "[]"):
             return cls(name=name, cards=[])
         
         raw_cards = json.loads(json_str)
         cards = [card_from_dict(c) for c in raw_cards]
         return cls(name=name, cards=cards, auto_shuffle=False)
+
+@dataclass
+class Area:
+    name: str
+    control: str
+    prot_start: Optional[pd.Timestamp] = None
+    prot_end: Optional[pd.Timestamp] = None
+
+    @property
+    def is_prot(self) -> bool:
+        if self.prot_start and self.prot_end:
+            now = pd.Timestamp.now()
+            return self.prot_start <= now < self.prot_end
+        return False
+
+    @property
+    def prot_remaining(self) -> Optional[pd.Timedelta]:
+        if self.is_prot and self.prot_end:
+            now = pd.Timestamp.now()
+            return max(self.prot_end - now, pd.Timedelta(0))
+        return None
+
+    def to_dict(self) -> dict:
+        data = asdict(self)
+        data["prot_start"] = (
+            self.prot_start
+            if self.prot_start
+            else None
+        )
+        data["prot_end"] = (
+            self.prot_end
+            if self.prot_end 
+            else None
+        )
+        return data
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Area":
+        return cls(
+            name=data["name"],
+            control=data["control"],
+            prot_start=(
+                pd.Timestamp(data["prot_start"])
+                if data.get("prot_start")
+                else None
+            ),
+            prot_end=(
+                pd.Timestamp(data["prot_end"]) 
+                if data.get("prot_end") 
+                else None
+            ),
+        )
+
+class AreaContainer:
+    def __init__(self, name: str, areas: Optional[List[Area]] = None):
+        self.name = name
+        self.areas = list(areas) if areas is not None else []
+
+    def remove_area(self, area: Area) -> Optional[Area]:
+        if area in self.areas:
+            self.areas.remove(area)
+            return area
+        return None
+
+    def add_area(self, area: Area) -> None:
+        self.areas.append(area)
+
+    def to_json(self) -> str:
+        return json.dumps([a.to_dict() for a in self.areas])
+
+    @classmethod
+    def from_json(cls, name: str, json_str: str) -> "AreaContainer":
+        if not json_str or json_str.strip() in ("", "[]"):
+            return cls(name=name, areas=[])
+
+        raw_areas = json.loads(json_str)
+        areas = [Area.from_dict(a) for a in raw_areas]
+        return cls(name=name, areas=areas)
 
 class Team:
     def __init__(self, name: str, members: List[str], max_hand_size: int = 5, max_challenges: int = 1):
@@ -80,6 +162,7 @@ class Team:
         self.max_challenges = max_challenges
         self.hand = CardContainer(name=f"{name}_hand")
         self.active_challenges = CardContainer(name=f"{name}_active")
+        self.controlled_areas = AreaContainer(name=f"{name}_areas")
 
     def has_hand_space(self) -> bool:
         return len(self.hand) < self.max_hand_size
