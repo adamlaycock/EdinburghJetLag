@@ -99,13 +99,13 @@ class Area:
     def to_dict(self) -> dict:
         data = asdict(self)
         data["prot_start"] = (
-            self.prot_start
-            if self.prot_start
+            self.prot_start.isoformat()
+            if self.prot_start is not None
             else None
         )
         data["prot_end"] = (
-            self.prot_end
-            if self.prot_end 
+            self.prot_end.isoformat()
+            if self.prot_end is not None
             else None
         )
         return data
@@ -157,7 +157,7 @@ class AreaContainer:
         return len(self.areas)
 
     def __repr__(self):
-        return f"[{self.name} with {len(self.areas)} under control]"
+        return f"[{self.name} with {len(self.areas)} areas]"
 
 class Team:
     def __init__(self, name: str, members: List[str], max_hand_size: int = 5, max_challenges: int = 1):
@@ -178,7 +178,15 @@ class Team:
     def __repr__(self):
         return f"[Team: {self.name} - Hand: {len(self.hand)}/{self.max_hand_size} - Active: {len(self.active_challenges)}]"
 
-def load_container(container_key: str, mode: str) -> CardContainer | AreaContainer:
+
+
+
+
+
+
+
+
+def load_card_container(container_key: str) -> CardContainer:
     df = conn.read(worksheet="container_mgmt", ttl=0)
 
     if df.empty or "container_key" not in df.columns:
@@ -189,12 +197,22 @@ def load_container(container_key: str, mode: str) -> CardContainer | AreaContain
         return CardContainer(name=container_key)
 
     json_str = match.iloc[0]["json"]
-    if mode == "card":
-        return CardContainer.from_json(name=container_key, json_str=json_str)
-    else:
-        return AreaContainer.from_json(name=container_key, json_str=json_str)
+    return CardContainer.from_json(name=container_key, json_str=json_str)
 
-def save_container(container) -> None:
+def load_area_container(container_key: str) -> AreaContainer:
+    df = conn.read(worksheet="container_mgmt", ttl=0)
+
+    if df.empty or "container_key" not in df.columns:
+        return AreaContainer(name=container_key)
+
+    match = df[df["container_key"] == container_key]
+    if match.empty:
+        return AreaContainer(name=container_key)
+
+    json_str = match.iloc[0]["json"]
+    return AreaContainer.from_json(name=container_key, json_str=json_str)
+
+def save_container(container: CardContainer | AreaContainer) -> None:
     df = conn.read(worksheet="container_mgmt", ttl=0)
 
     if df.empty or "container_key" not in df.columns:
@@ -214,3 +232,13 @@ def save_container(container) -> None:
         
     conn.update(worksheet="container_mgmt", data=df)
     st.cache_data.clear()
+
+def transfer_card(donor: CardContainer , card: Card, recipient: CardContainer) -> None:
+    removed = donor.remove_card(card)
+    if removed:
+        recipient.add_card(removed)
+
+def transfer_area(donor: AreaContainer , area: Area, recipient: AreaContainer) -> None:
+    removed = donor.remove_area(area)
+    if removed:
+        recipient.add_area(removed)
