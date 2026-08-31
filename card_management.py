@@ -103,12 +103,14 @@ def load_card_container(container_key: str) -> CardContainer:
     json_str = match.iloc[0]["cards_json"]
     return CardContainer.from_json(name=container_key, json_str=json_str)
 
-
 def save_card_container(card_container: CardContainer) -> None:
     df = conn.read(worksheet="card_management", ttl=0)
 
     if df.empty or "container_key" not in df.columns:
         df = pd.DataFrame(columns=["container_key", "cards_json"])
+
+    df["container_key"] = df["container_key"].astype(str)
+    df["cards_json"] = df["cards_json"].astype(str)
 
     if card_container.name in df["container_key"].values:
         df.loc[df["container_key"] == card_container.name, "cards_json"] = card_container.to_json()
