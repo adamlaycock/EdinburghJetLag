@@ -46,14 +46,16 @@ def item_from_dict(data: Union[Dict[str, Any], Any]) -> Any:
 
 class Container:
     def __init__(
-        self, name: str, type: str, items: Optional[List[Any]] = None
+        self, name: str, type: str, max_items: int, items: Optional[List[Any]] = None
     ):
         self.name = name
         self.type = type
+        self.max_items = max_items
         self.items = list(items) if items is not None else []
 
     def add_item(self, item: Any) -> None:
-        self.items.append(item)
+        if self.has_space():
+            self.items.append(item)
 
     def remove_item(self, item: Any) -> bool:
         if item in self.items:
@@ -63,9 +65,10 @@ class Container:
 
     def transfer_item(self, item: Any, recipient: Container) -> bool:
         if item in self.items:
-            self.items.remove(item)
-            recipient.add_item(item)
-            return True
+            if recipient.has_space():
+                self.items.remove(item)
+                recipient.add_item(item)
+                return True
         return False
 
     def to_json(self, indent: Optional[int] = None) -> str:
@@ -74,9 +77,15 @@ class Container:
             for item in self.items
         ]
         return json.dumps(
-            {"name": self.name, "type": self.type, "items": serialized_items},
+            {
+                "name": self.name, "type": self.type, 
+                "max_items": self.max_items ,"items": serialized_items
+            },
             indent=indent,
         )
+
+    def has_space(self) -> bool:
+        return len(self.items) < self.max_items
 
     @classmethod
     def from_json(cls, json_str: str) -> Container:
@@ -85,6 +94,7 @@ class Container:
         return cls(
             name=data["name"],
             type=data["type"],
+            max_items = data["max_items"],
             items=deserialised_items,
         )
 

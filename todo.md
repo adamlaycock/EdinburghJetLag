@@ -3,7 +3,7 @@
   - [ ] Status times
 - [ ] Scoring system & live scoreboard
 - [x] Team assignment
-  - [ ] Redesign to support Card & Team classes 
+  - [x] Redesign to support Card & Team classes 
   - [ ] Support for different numbers of teams between games
   - [ ] Lock team changes after game start
 - [ ] Card management
@@ -13,9 +13,9 @@
   - [x] Card container class
     - [x] Team hands (max 5)
     - [x] Team active challenge (max 1)
-    - [ ] Global active challenges (max 5)
-    - [ ] Discarded cards
-    - [ ] Reward deck (curses and powerups)
-    - [ ] Challenge deck
+    - [x] Global active challenges (max 5)
+    - [x] Discarded cards
+    - [x] Reward deck (curses and powerups)
+    - [x] Challenge deck
 - [ ] Location updates
 - [ ] Alert system

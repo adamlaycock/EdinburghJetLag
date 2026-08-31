@@ -36,8 +36,6 @@ def build_team_players(team_name: str, team_data: pd.DataFrame):
     for player in team_data[team_data["team_name"]==team_name]["player_name"]:
         st.write(f"- {player}")
 
-
-
 with st.form("add_player_form", clear_on_submit=True):
     st.subheader('Add Players')
     name = st.text_input("Enter player name:", key="add_player")
