@@ -5,7 +5,6 @@ from typing import List, Optional, Dict, Any
 import pandas as pd
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
-import datetime
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -154,6 +153,12 @@ class AreaContainer:
         areas = [Area.from_dict(a) for a in raw_areas]
         return cls(name=name, areas=areas)
 
+    def __len__(self):
+        return len(self.areas)
+
+    def __repr__(self):
+        return f"[{self.name} with {len(self.areas)} under control]"
+
 class Team:
     def __init__(self, name: str, members: List[str], max_hand_size: int = 5, max_challenges: int = 1):
         self.name = name
@@ -162,7 +167,7 @@ class Team:
         self.max_challenges = max_challenges
         self.hand = CardContainer(name=f"{name}_hand")
         self.active_challenges = CardContainer(name=f"{name}_active")
-        self.controlled_areas = AreaContainer(name=f"{name}_areas")
+        self.areas = AreaContainer(name=f"{name}_areas")
 
     def has_hand_space(self) -> bool:
         return len(self.hand) < self.max_hand_size
@@ -173,8 +178,8 @@ class Team:
     def __repr__(self):
         return f"[Team: {self.name} - Hand: {len(self.hand)}/{self.max_hand_size} - Active: {len(self.active_challenges)}]"
 
-def load_card_container(container_key: str) -> CardContainer:
-    df = conn.read(worksheet="card_management", ttl=0)
+def load_container(container_key: str, mode: str) -> CardContainer | AreaContainer:
+    df = conn.read(worksheet="container_mgmt", ttl=0)
 
     if df.empty or "container_key" not in df.columns:
         return CardContainer(name=container_key)
@@ -183,26 +188,29 @@ def load_card_container(container_key: str) -> CardContainer:
     if match.empty:
         return CardContainer(name=container_key)
 
-    json_str = match.iloc[0]["cards_json"]
-    return CardContainer.from_json(name=container_key, json_str=json_str)
+    json_str = match.iloc[0]["json"]
+    if mode == "card":
+        return CardContainer.from_json(name=container_key, json_str=json_str)
+    else:
+        return AreaContainer.from_json(name=container_key, json_str=json_str)
 
-def save_card_container(card_container: CardContainer) -> None:
-    df = conn.read(worksheet="card_management", ttl=0)
+def save_container(container) -> None:
+    df = conn.read(worksheet="container_mgmt", ttl=0)
 
     if df.empty or "container_key" not in df.columns:
-        df = pd.DataFrame(columns=["container_key", "cards_json"])
+        df = pd.DataFrame(columns=["container_key", "json"])
 
     df["container_key"] = df["container_key"].astype(str)
-    df["cards_json"] = df["cards_json"].astype(str)
+    df["json"] = df["json"].astype(str)
 
-    if card_container.name in df["container_key"].values:
-        df.loc[df["container_key"] == card_container.name, "cards_json"] = card_container.to_json()
+    if container.name in df["container_key"].values:
+        df.loc[df["container_key"] == container.name, "json"] = container.to_json()
     else:
         new_row = pd.DataFrame([{
-            "container_key": card_container.name,
-            "cards_json": card_container.to_json()
+            "container_key": container.name,
+            "json": container.to_json()
         }])
         df = pd.concat([df, new_row], ignore_index=True)
         
-    conn.update(worksheet="card_management", data=df)
+    conn.update(worksheet="container_mgmt", data=df)
     st.cache_data.clear()
