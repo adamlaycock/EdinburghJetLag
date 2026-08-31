@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import List, Optional, Dict, Any, Union
 import json
 import pandas as pd
+import random as r
 
 # --- FACTORY DISPATCHER ---
 
@@ -70,6 +71,9 @@ class Container:
                 recipient.add_item(item)
                 return True
         return False
+
+    def shuffle(self) -> None:
+        r.shuffle(self.items)
 
     def to_json(self, indent: Optional[int] = None) -> str:
         serialized_items = [
