@@ -1,8 +1,9 @@
 from __future__ import annotations
 from typing import List, Optional, Dict, Any, Union
 import json
-import pandas as pd
 import random as r
+import time
+from datetime import timedelta
 
 # --- FACTORY DISPATCHER ---
 
@@ -18,6 +19,8 @@ def item_from_dict(data: Union[Dict[str, Any], Any]) -> Any:
             description=data["description"],
             card_type=data["card_type"],
             duration=data["duration"],
+            challenge_start=data.get("challenge_start"),
+            challenge_end=data.get("challenge_end")
         )
     elif model_type == "RewardCard":
         return RewardCard(
@@ -123,14 +126,59 @@ class Card:
 
 
 class ChallengeCard(Card):
-    def __init__(self, title: str, description: str, card_type: str, duration: int):
+    def __init__(
+        self, 
+        title: str, 
+        description: str, 
+        card_type: str, 
+        duration: int,
+        challenge_start: Optional[float] = None,
+        challenge_end: Optional[float] = None
+    ):
         super().__init__(title, description, card_type)
         self.duration = duration
+        self.challenge_start = challenge_start
+
+        if challenge_end is not None:
+            self.challenge_end = challenge_end
+        elif challenge_start is not None:
+            self.challenge_end = challenge_start + duration
+        else:
+            self.challenge_end = None
 
     def to_dict(self) -> Dict[str, Any]:
         data = super().to_dict()
         data["duration"] = self.duration
+        data["challenge_start"] = self.challenge_start
+        data["challenge_end"] = self.challenge_end
         return data
+
+    def start_challenge(self) -> None:
+        self.challenge_start = time.time()
+        self.challenge_end = self.challenge_start + self.duration
+
+    def _check_expiration(self) -> None:
+        if self.challenge_end is not None:
+            now = time.time()
+            if now >= self.challenge_end:
+                self.challenge_start = None
+                self.challenge_end = None
+
+    @property
+    def is_active(self) -> bool:
+        self._check_expiration()
+        if self.challenge_start is not None and self.challenge_end is not None:
+            now = time.time()
+            return self.challenge_start <= now < self.challenge_end
+        return False
+
+    @property
+    def prot_remaining(self) -> Optional[timedelta]:
+        self._check_expiration()
+        if self.challenge_end is not None:
+            remaining_seconds = self.challenge_end - time.time()
+            return timedelta(seconds=max(remaining_seconds, 0))
+        return None
 
 
 class RewardCard(Card):
@@ -168,29 +216,29 @@ class Area:
 
     def _check_expiration(self) -> None:
         if self.prot_end is not None:
-            now = pd.Timestamp.now(tz="UTC")
-            end_dt = pd.to_datetime(self.prot_end, unit="s", utc=True)
-            remaining_seconds = (end_dt - now).total_seconds()
-            
-            if remaining_seconds < 0:
+            now = time.time()
+            if now >= self.prot_end:
                 self.prot_start = None
                 self.prot_end = None
+
+    def start_protection(self, duration: float) -> None:
+        self.prot_start = time.time()
+        self.prot_end = self.prot_start + duration
 
     @property
     def is_prot(self) -> bool:
         self._check_expiration()
         if self.prot_start is not None and self.prot_end is not None:
-            now = pd.Timestamp.now(tz="UTC").timestamp()
+            now = time.time()
             return self.prot_start <= now < self.prot_end
         return False
 
     @property
-    def prot_remaining(self) -> Optional[pd.Timedelta]:
+    def prot_remaining(self) -> Optional[timedelta]:
         self._check_expiration()
-        if self.is_prot and self.prot_end is not None:
-            now = pd.Timestamp.now(tz="UTC")
-            end_dt = pd.to_datetime(self.prot_end, unit="s", utc=True)
-            return max(end_dt - now, pd.Timedelta(0))
+        if self.prot_end is not None:
+            remaining_seconds = self.prot_end - time.time()
+            return timedelta(seconds=max(remaining_seconds, 0))
         return None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -215,6 +263,12 @@ class Team:
         active: Optional[Container] = None
     ):
         self.name = name
-        self.players = players or Container(name=f"{self.name}_players", type="players", max_items=5)
-        self.hand = hand or Container(name=f"{self.name}_hand", type="cards", max_items=5)
-        self.active = active or Container(name=f"{self.name}_active", type="cards", max_items=1)
+        self.players = players or Container(
+            name=f"{self.name}_players", type="players", max_items=5
+        )
+        self.hand = hand or Container(
+            name=f"{self.name}_hand", type="cards", max_items=5
+        )
+        self.active = active or Container(
+            name=f"{self.name}_active", type="cards", max_items=1
+        )
