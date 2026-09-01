@@ -1,6 +1,6 @@
 Frontend Design
-- [] Landing page containing the live, interactive game map.
-- [] Team creation and game start page.
+- [ ] Landing page containing the live, interactive game map.
+- [ ] Team creation and game start page.
 - [ ] Global challenges and area claiming page.
 - [ ] Team page with hand, active challenge (+time remaining).
 - [ ] Score page and game time remaining.
