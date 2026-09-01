@@ -204,3 +204,17 @@ class Area:
 
     def __eq__(self, other: Any) -> bool:
         return isinstance(other, Area) and self.to_dict() == other.to_dict()
+
+
+class Team:
+    def __init__(
+        self, 
+        name: str, 
+        players: Optional[Container] = None, 
+        hand: Optional[Container] = None, 
+        active: Optional[Container] = None
+    ):
+        self.name = name
+        self.players = players or Container(name=f"{self.name}_players", type="players", max_items=5)
+        self.hand = hand or Container(name=f"{self.name}_hand", type="cards", max_items=5)
+        self.active = active or Container(name=f"{self.name}_active", type="cards", max_items=1)

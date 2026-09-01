@@ -45,9 +45,16 @@ def initialise_core_components() -> dict:
         for name, type_, max_items in specs
     }
 
-def initialise_teams(Dict[List[str]]) -> Dict[Container]:
+def initialise_teams(teams: Dict[str, List[str]]) -> Dict[str, Team]:
     return {
-        
+        name: Team(
+            name=name, 
+            players=Container(
+                name=f"{name}_players", type="players", max_items=5, 
+                items=player_list
+            )
+        )
+        for name, player_list in teams.items()
     }
 
 
