@@ -4,9 +4,35 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import geopandas as gpd
 from shapely.geometry import Point
-from streamlit_geolocation import streamlit_geolocation
 
 conn = st.connection("gsheets", type=GSheetsConnection)
+
+###############################################################################
+# Functions for communicating with "team_mgmt"
+###############################################################################
+
+@st.cache_data(ttl=5) 
+def get_teams_data():
+    df = conn.read(worksheet='teams')
+    if df.empty:
+        return pd.DataFrame({
+            "team_name": [],
+            "player_name": []
+        })
+    else:
+        return df
+
+def clear_team_data(team_name: str) -> None:
+    current_team_data = get_teams_data()
+
+    new_team_data = current_team_data[current_team_data["team_name"]!=team_name]
+
+    conn.update(worksheet="teams", data=new_team_data)
+    st.cache_data.clear()
+
+###############################################################################
+# Functions for communicating with "container_mgmt"
+###############################################################################
 
 def save_containers(containers: dict[str, Container]) -> None:
     df = conn.read(worksheet="container_mgmt", ttl=0)
@@ -34,11 +60,32 @@ def load_containers() -> Dict[str, Container]:
         for _, row in df.iterrows()
     }
 
+###############################################################################
+# Functions for starting the game
+###############################################################################
+
 def initialise_core_components(
     team_a_players: List[str],
     team_b_players: List[str],
     team_c_players: List[str],
 ) -> Dict[str, Container]:
+
+    gdf = gpd.read_file("MapData/Board/GameBoard.geojson")
+    gdf_areas = [
+        Area(
+            name=name,
+            area=area,
+            distance=distance,
+            geometry=geometry,
+        )
+        for name, area, distance, geometry in zip(
+            gdf["name"],
+            gdf["area"],
+            gdf["distance"],
+            gdf["geometry"],
+        )
+    ]
+    
     specs = [
         ("challenge_deck", "cards", 100),
         ("reward_deck", "cards", 100),
@@ -73,20 +120,29 @@ def initialise_core_components(
             name=name,
             type=type_,
             max_items=max_items,
-            **({"items": player_items[name]} if name in player_items else {}),
+            **(
+                {"items": gdf_areas}
+                if name == "unclaimed_areas"
+                else {"items": player_items[name]}
+                if name in player_items
+                else {}
+            ),
         )
         for name, type_, max_items in specs
     }
 
-def get_current_area(lat: float, lon: float, board: gpd.GeoDataFrame) -> str:
-    coords = Point(lon, lat)
-    board = board.to_crs(epsg=4326)
+###############################################################################
+# Functions identifying current area using geolocation
+###############################################################################
 
-    matching_polygon = board[board.contains(coords)]
+def get_current_area(lat: float, lon: float, areas: gpd.GeoDataFrame) -> str:
+    coords = Point(lon, lat)
+    areas = areas.to_crs(epsg=4326)
+
+    matching_polygon = areas[areas.contains(coords)]
 
     if not matching_polygon.empty:
         area_name = matching_polygon["area_name"].values[0]
         return area_name
     else:
         return None
-

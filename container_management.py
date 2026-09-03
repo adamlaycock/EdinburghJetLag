@@ -15,7 +15,7 @@ def item_from_dict(data: Union[Dict[str, Any], Any]) -> Any:
 
     if model_type == "ChallengeCard":
         return ChallengeCard(
-            title=data["title"],
+            name=data["name"],
             description=data["description"],
             card_type=data["card_type"],
             duration=data["duration"],
@@ -24,14 +24,14 @@ def item_from_dict(data: Union[Dict[str, Any], Any]) -> Any:
         )
     elif model_type == "RewardCard":
         return RewardCard(
-            title=data["title"],
+            name=data["name"],
             description=data["description"],
             card_type=data["card_type"],
             reward_type=data["reward_type"],
         )
     elif model_type == "Card":
         return Card(
-            title=data["title"],
+            name=data["name"],
             description=data["description"],
             card_type=data["card_type"],
         )
@@ -40,6 +40,9 @@ def item_from_dict(data: Union[Dict[str, Any], Any]) -> Any:
     elif model_type == "Area":
         return Area(
             name=data["name"],
+            area=data["area"],
+            distance=data["distance"],
+            geometry=data["geometry"],
             prot_start=data.get("prot_start"),
             prot_end=data.get("prot_end"),
         )
@@ -56,6 +59,9 @@ class Container:
         self.type = type
         self.max_items = max_items
         self.items = list(items) if items is not None else []
+
+    def __repr__(self):
+        return f"{self.name}: {len(self.items)}/{self.max_items}"
 
     def add_item(self, item: Any) -> None:
         if self.has_space():
@@ -74,6 +80,12 @@ class Container:
                 recipient.add_item(item)
                 return True
         return False
+
+    def get_item_by_name(self, name: str) -> Optional[Any]:
+        for item in self.items:
+            if getattr(item, "name", None) == name:
+                return item
+        return None
 
     def shuffle(self) -> None:
         r.shuffle(self.items)
@@ -108,15 +120,15 @@ class Container:
 # --- ITEMS ---
 
 class Card:
-    def __init__(self, title: str, description: str, card_type: str):
-        self.title = title
+    def __init__(self, name: str, description: str, card_type: str):
+        self.name = name
         self.description = description
         self.card_type = card_type
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "model_type": self.__class__.__name__,
-            "title": self.title,
+            "name": self.name,
             "description": self.description,
             "card_type": self.card_type,
         }
@@ -124,18 +136,21 @@ class Card:
     def __eq__(self, other: Any) -> bool:
         return isinstance(other, Card) and self.to_dict() == other.to_dict()
 
+    def __repr__(self):
+        return self.name
+
 
 class ChallengeCard(Card):
     def __init__(
         self, 
-        title: str, 
+        name: str, 
         description: str, 
         card_type: str, 
         duration: int,
         challenge_start: Optional[float] = None,
         challenge_end: Optional[float] = None
     ):
-        super().__init__(title, description, card_type)
+        super().__init__(name, description, card_type)
         self.duration = duration
         self.challenge_start = challenge_start
 
@@ -182,8 +197,8 @@ class ChallengeCard(Card):
 
 
 class RewardCard(Card):
-    def __init__(self, title: str, description: str, card_type: str, reward_type: str):
-        super().__init__(title, description, card_type)
+    def __init__(self, name: str, description: str, card_type: str, reward_type: str):
+        super().__init__(name, description, card_type)
         self.reward_type = reward_type
 
     def to_dict(self) -> Dict[str, Any]:
@@ -202,15 +217,24 @@ class Player:
     def __eq__(self, other: Any) -> bool:
         return isinstance(other, Player) and self.name == other.name
 
+    def __repr__(self):
+        return self.name
+
 
 class Area:
     def __init__(
         self,
         name: str,
+        area: float,
+        distance: float,
+        geometry: str,
         prot_start: Optional[float] = None,
         prot_end: Optional[float] = None,
     ):
         self.name = name
+        self.area = area
+        self.distance = distance
+        self.geometry = geometry
         self.prot_start = prot_start
         self.prot_end = prot_end
 
@@ -246,9 +270,15 @@ class Area:
         return {
             "model_type": "Area",
             "name": self.name,
+            "area": self.area,
+            "distance": self.distance,
+            "geometry": self.geometry,
             "prot_start": self.prot_start,
             "prot_end": self.prot_end,
         }
 
     def __eq__(self, other: Any) -> bool:
         return isinstance(other, Area) and self.to_dict() == other.to_dict()
+
+    def __repr__(self):
+        return self.name
