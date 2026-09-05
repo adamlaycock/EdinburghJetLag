@@ -37,19 +37,24 @@ def build_player_form() -> None:
             new_team_data = pd.concat(
                 [current_team_data, new_row], ignore_index=True
             )
-            conn.update(worksheet="teams", data=new_team_data)
+            conn.update(worksheet="team_mgmt", data=new_team_data)
             st.cache_data.clear()
             st.rerun()
 
+@st.fragment(run_every="5s")
+def build_team_players():
+    team_names = ["team_a", "team_b", "team_c"]
+    team_data = get_teams_data()
 
-def build_team_players(team_names: List[str], team_data: pd.DataFrame):
+    players_by_team = {name: [] for name in team_names}
+
     if not team_data.empty:
         left, middle, right = st.columns(3)
 
-        for column, team_name in zip(
-            [left, middle, right],
-            team_names
-        ):
+        for column, team_name in zip([left, middle, right], team_names):
+            team_players = team_data[team_data["team_name"] == team_name]["player_name"].tolist()
+            players_by_team[team_name] = team_players
+
             with column:
                 st.subheader(f"{team_name}:")
                 st.button(
@@ -58,9 +63,16 @@ def build_team_players(team_names: List[str], team_data: pd.DataFrame):
                     args=(team_name,)
                 )
                 st.write("")
-                for player in team_data[team_data["team_name"]==team_name]["player_name"]:
+                for player in team_players:
                     st.write(f"- {player}")
 
+    return (
+        players_by_team["team_a"], 
+        players_by_team["team_b"], 
+        players_by_team["team_c"]
+    )
+
+@st.fragment(run_every="5s")
 def build_game_map(core_components: Dict[str, Container]) -> None:
     containers = {
         "Team A": core_components["team_a_areas"],

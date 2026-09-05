@@ -13,7 +13,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=5) 
 def get_teams_data():
-    df = conn.read(worksheet='teams')
+    df = conn.read(worksheet='team_mgmt')
     if df.empty:
         return pd.DataFrame({
             "team_name": [],
@@ -27,7 +27,7 @@ def clear_team_data(team_name: str) -> None:
 
     new_team_data = current_team_data[current_team_data["team_name"]!=team_name]
 
-    conn.update(worksheet="teams", data=new_team_data)
+    conn.update(worksheet="team_mgmt", data=new_team_data)
     st.cache_data.clear()
 
 ###############################################################################
