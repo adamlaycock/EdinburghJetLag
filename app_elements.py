@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit_folium import st_folium
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
+import geopandas as gpd
 from typing import List, Dict
 from game_functions import get_teams_data, clear_team_data
 from container_management import Container

@@ -87,6 +87,12 @@ class Container:
                 return item
         return None
 
+    def transfer_item_by_name(self, item_name: str, recipient: Container) -> bool:
+        item = self.get_item_by_name(item_name)
+        if item is not None:
+            return self.transfer_item(item, recipient)
+        return False
+
     def shuffle(self) -> None:
         r.shuffle(self.items)
 
