@@ -4,12 +4,12 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import geopandas as gpd
 from typing import List, Dict
-from game_functions import get_teams_data, clear_team_data
+from game_functions import get_teams_data, clear_team_data, load_containers, update_teams_data
 from container_management import Container
 
-conn = st.connection("gsheets", type=GSheetsConnection)
+CONN = st.connection("gsheets", type=GSheetsConnection)
 
-TEAMS = ["team_a", "team_b", "team_c"]
+TEAMS = ["Team A", "Team B", "Team C"]
 
 ###############################################################################
 # Functions for communicating with "team_mgmt"
@@ -17,7 +17,7 @@ TEAMS = ["team_a", "team_b", "team_c"]
 
 def build_player_form() -> None:
     with st.form("add_player_form", clear_on_submit=True):
-        st.subheader('Add Players')
+        st.header('Add Players')
         name = st.text_input("Enter player name:", key="add_player")
         team = st.selectbox(
             "Select team:", 
@@ -37,26 +37,26 @@ def build_player_form() -> None:
             new_team_data = pd.concat(
                 [current_team_data, new_row], ignore_index=True
             )
-            conn.update(worksheet="team_mgmt", data=new_team_data)
+            update_teams_data(new_team_data)
             st.cache_data.clear()
             st.rerun()
 
 @st.fragment(run_every="5s")
 def build_team_players():
-    team_names = ["team_a", "team_b", "team_c"]
+    st.header("Current Players:")
     team_data = get_teams_data()
 
-    players_by_team = {name: [] for name in team_names}
+    players_by_team = {name: [] for name in TEAMS}
 
     if not team_data.empty:
         left, middle, right = st.columns(3)
 
-        for column, team_name in zip([left, middle, right], team_names):
+        for column, team_name in zip([left, middle, right], TEAMS):
             team_players = team_data[team_data["team_name"] == team_name]["player_name"].tolist()
             players_by_team[team_name] = team_players
 
             with column:
-                st.subheader(f"{team_name}:")
+                st.subheader(f"{team_name}")
                 st.button(
                     f"Clear {team_name}", 
                     on_click=clear_team_data,
@@ -67,13 +67,15 @@ def build_team_players():
                     st.write(f"- {player}")
 
     return (
-        players_by_team["team_a"], 
-        players_by_team["team_b"], 
-        players_by_team["team_c"]
+        players_by_team["Team A"], 
+        players_by_team["Team B"], 
+        players_by_team["Team C"]
     )
 
 @st.fragment(run_every="5s")
-def build_game_map(core_components: Dict[str, Container]) -> None:
+def build_game_map() -> None:
+    core_components = load_containers()
+
     containers = {
         "Team A": core_components["team_a_areas"],
         "Team B": core_components["team_b_areas"],

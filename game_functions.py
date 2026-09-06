@@ -10,6 +10,8 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 ###############################################################################
 # Functions for communicating with "team_mgmt"
 ###############################################################################
+def update_teams_data(new_team_data):
+    conn.update(worksheet="team_mgmt", data=new_team_data)
 
 @st.cache_data(ttl=5) 
 def get_teams_data():
@@ -146,3 +148,13 @@ def get_current_area(lat: float, lon: float, areas: gpd.GeoDataFrame) -> str:
         return area_name
     else:
         return None
+
+###############################################################################
+# Functions for moving items
+###############################################################################
+
+def move_item(item_name: str, donor: Container, recipient: Container):
+    if recipient.has_space():
+        item = donor.get_item_by_name(item_name)
+        donor.remove_item(item)
+        recipient.add_item(item)

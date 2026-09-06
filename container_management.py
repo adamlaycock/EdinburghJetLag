@@ -4,8 +4,12 @@ import json
 import random as r
 import time
 from datetime import timedelta
+import geopandas as gpd
+from shapely.geometry.base import BaseGeometry
 
-# --- FACTORY DISPATCHER ---
+# --- FACTORY DISPATCHER --
+
+GAME_BOARD = gpd.read_file("MapData/Board/GameBoard.geojson")
 
 def item_from_dict(data: Union[Dict[str, Any], Any]) -> Any:
     if not isinstance(data, dict) or "model_type" not in data:
@@ -38,11 +42,16 @@ def item_from_dict(data: Union[Dict[str, Any], Any]) -> Any:
     elif model_type == "Player":
         return Player(name=data["name"])
     elif model_type == "Area":
+        matching_rows = GAME_BOARD.loc[
+            GAME_BOARD["name"] == data["name"]
+        ]
+        row = matching_rows.iloc[0]
+
         return Area(
-            name=data["name"],
-            area=data["area"],
-            distance=data["distance"],
-            geometry=data["geometry"],
+            name=row["name"],
+            area=row["area"],
+            distance=row["distance"],
+            geometry=row["geometry"],
             prot_start=data.get("prot_start"),
             prot_end=data.get("prot_end"),
         )
@@ -53,7 +62,11 @@ def item_from_dict(data: Union[Dict[str, Any], Any]) -> Any:
 
 class Container:
     def __init__(
-        self, name: str, type: str, max_items: int, items: Optional[List[Any]] = None
+        self, 
+        name: str, 
+        type: str, 
+        max_items: int, 
+        items: Optional[List[Any]] = None
     ):
         self.name = name
         self.type = type
@@ -87,7 +100,16 @@ class Container:
                 return item
         return None
 
-    def transfer_item_by_name(self, item_name: str, recipient: Container) -> bool:
+    def get_random_item(self) -> Optional[str]:
+        if not self.items:
+            return None
+        return r.choice(self.items).name
+
+    def transfer_item_by_name(
+            self, 
+            item_name: str, 
+            recipient: Container
+    ) -> bool:
         item = self.get_item_by_name(item_name)
         if item is not None:
             return self.transfer_item(item, recipient)
@@ -233,7 +255,7 @@ class Area:
         name: str,
         area: float,
         distance: float,
-        geometry: str,
+        geometry: BaseGeometry,
         prot_start: Optional[float] = None,
         prot_end: Optional[float] = None,
     ):
@@ -276,9 +298,6 @@ class Area:
         return {
             "model_type": "Area",
             "name": self.name,
-            "area": self.area,
-            "distance": self.distance,
-            "geometry": self.geometry,
             "prot_start": self.prot_start,
             "prot_end": self.prot_end,
         }
