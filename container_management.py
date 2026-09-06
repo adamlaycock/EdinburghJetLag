@@ -100,10 +100,10 @@ class Container:
                 return item
         return None
 
-    def get_random_item(self) -> Optional[str]:
+    def get_random_item(self) -> Optional[Any]:
         if not self.items:
             return None
-        return r.choice(self.items).name
+        return r.choice(self.items)
 
     def transfer_item_by_name(
             self, 
@@ -114,6 +114,14 @@ class Container:
         if item is not None:
             return self.transfer_item(item, recipient)
         return False
+
+    def transfer_random_item(
+            self,
+            recipient: Container
+    ):
+        item = self.get_random_item()
+        if item is not None:
+            return self.transfer_item(item, recipient)
 
     def shuffle(self) -> None:
         r.shuffle(self.items)
@@ -225,7 +233,13 @@ class ChallengeCard(Card):
 
 
 class RewardCard(Card):
-    def __init__(self, name: str, description: str, card_type: str, reward_type: str):
+    def __init__(
+            self, 
+            name: str, 
+            description: str, 
+            card_type: str, 
+            reward_type: str,
+    ):
         super().__init__(name, description, card_type)
         self.reward_type = reward_type
 

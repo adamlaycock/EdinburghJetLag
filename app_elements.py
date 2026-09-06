@@ -4,7 +4,7 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import geopandas as gpd
 from typing import List, Dict
-from game_functions import get_teams_data, clear_team_data, load_containers, update_teams_data
+from game_functions import get_teams_data, clear_team_data, load_containers, update_teams_data, save_containers
 from container_management import Container, ChallengeCard
 
 CONN = st.connection("gsheets", type=GSheetsConnection)
@@ -41,10 +41,9 @@ def build_player_form() -> None:
             st.cache_data.clear()
             st.rerun()
 
-@st.fragment(run_every="5s")
-def build_team_players():
+@st.fragment(run_every="30s")
+def build_team_players(team_data):
     st.header("Current Players:")
-    team_data = get_teams_data()
 
     players_by_team = {name: [] for name in TEAMS}
 
@@ -72,10 +71,8 @@ def build_team_players():
         players_by_team["Team C"]
     )
 
-@st.fragment(run_every="5s")
-def build_game_map() -> None:
-    core_components = load_containers()
-
+@st.fragment(run_every="30s")
+def build_game_map(core_components) -> None:
     containers = {
         "Team A": core_components["team_a_areas"],
         "Team B": core_components["team_b_areas"],
@@ -145,8 +142,7 @@ def build_game_map() -> None:
 
     st_folium(m, width=700, height=500, returned_objects=[])
 
-def build_global_challenges() -> None:
-    core_components = load_containers()
+def build_global_challenges(core_components) -> None:
     global_challenges = core_components["global_challenges"]
 
     if global_challenges.items:
@@ -155,7 +151,60 @@ def build_global_challenges() -> None:
             global_challenges.items,
             ["one", "two", "three", "four", "five"]
         ):
-            with st.form(f"card_{card_num}"):
+            with st.form(f"challenge_card_{card_num}"):
                 st.subheader(challenge_card.name)
                 st.write(f"{challenge_card.description}")
                 st.write(f"This challenge must be completed within **{int(challenge_card.duration / 60)} minutes**.")
+
+def build_team_hand(core_components: Dict[str, Container], team_name: str):
+    team_name = team_name.lower().replace(" ", "_")
+
+    team_hand = core_components[f"{team_name}_hand"]
+
+    if team_hand.items:
+        st.header("Available Cards:")
+        for reward_card, card_num in zip(
+            team_hand.items, 
+            ["one", "two", "three", "four", "five"]
+        ):
+            with st.form(f"reward_card_{card_num}"):
+                st.subheader(reward_card.name)
+                st.write(f"{reward_card.reward_type}")
+                st.write(f"{reward_card.description}")
+
+                if st.button("Use Card", key=f"use_{card_num}"):
+                    team_hand.transfer_item(
+                        reward_card, 
+                        core_components["discard_deck"]
+                    )
+                    save_containers(core_components)
+                    
+                if st.button("Discard Card", key=f"discard_{card_num}"):
+                    team_hand.transfer_item(
+                        reward_card,
+                        core_components["discard_deck"]
+                    )
+                    save_containers(core_components)
+
+def build_team_active(core_components: Dict[str, Container], team_name:str):
+    team_name = team_name.lower().replace(" ", "_")
+
+    team_active = core_components[f"{team_name}_active"]
+
+    if team_active.items:
+        st.header("Active Challenge:")
+        for challenge_card in team_active.items:
+            with st.form(f"active_challenge"):
+                st.subheader(challenge_card.name)
+                st.write(f"{challenge_card.reward_type}")
+                st.write(f"{challenge_card.description}")
+
+                if st.button("Complete Challenge"):
+                    team_active.transfer_item(
+                        challenge_card, 
+                        core_components["discard_deck"]
+                    )
+                    core_components["reward_deck"].transfer_random_item(
+                        core_components[f"{team_name}_hand"]
+                    )
+                    save_containers(core_components)
