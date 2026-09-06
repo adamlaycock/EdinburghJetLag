@@ -183,7 +183,7 @@ def build_start_challenge(core_components) -> None:
             active_container = core_components[f"{team_name}_active"]
 
             if challenged_areas.get_item_by_name(current_area) is None:
-
+                # Need to check that the area is not protected
                 if active_container.has_space():
                     challenge_card = global_challenges.get_item_by_name(
                         challenge_name
@@ -254,3 +254,4 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
                         core_components["global_challenges"]
                     )
                     save_containers(core_components)
+                    
