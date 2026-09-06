@@ -1,11 +1,14 @@
 import streamlit as st
 from streamlit_folium import st_folium
 from streamlit_gsheets import GSheetsConnection
+from streamlit_geolocation import streamlit_geolocation
 import pandas as pd
 import geopandas as gpd
-from typing import List, Dict
-from game_functions import get_teams_data, clear_team_data, load_containers, update_teams_data, save_containers
+from typing import List, Dict, Optional
+from game_functions import get_teams_data, clear_team_data, load_containers, update_teams_data, save_containers, get_current_area
 from container_management import Container, ChallengeCard
+from shapely.geometry import Point
+import time
 
 CONN = st.connection("gsheets", type=GSheetsConnection)
 
@@ -141,7 +144,7 @@ def build_game_map(core_components) -> None:
     m.options["minZoom"] = 12
 
     st_folium(m, width=700, height=500, returned_objects=[])
-
+        
 def build_global_challenges(core_components) -> None:
     global_challenges = core_components["global_challenges"]
 
@@ -155,6 +158,44 @@ def build_global_challenges(core_components) -> None:
                 st.subheader(challenge_card.name)
                 st.write(f"{challenge_card.description}")
                 st.write(f"This challenge must be completed within **{int(challenge_card.duration / 60)} minutes**.")
+
+def build_start_challenge(core_components) -> None:
+    global_challenges = core_components["global_challenges"]
+
+    if global_challenges.items:
+        with st.form("start_challenge"):
+            team_name = st.selectbox(
+                "Select team:",
+                options=[None, "Team A", "Team B", "Team C"],
+                index=0
+            )
+            challenge_name = st.selectbox(
+                "Select challenge:",
+                options=[challenge_card.name for challenge_card in global_challenges.items]
+            )
+            current_area = get_current_area()
+            if current_area:
+                st.write(f"Current Area: {current_area}")
+
+    if st.form_submit_button("Start Challenge", clear_on_submit=True):
+        if team_name and challenge_name and current_area:
+            challenged_areas = core_components["challenged_areas"]
+            active_container = core_components[f"{team_name}_active"]
+
+            if challenged_areas.get_item_by_name(current_area) is None:
+
+                if active_container.has_space():
+                    challenge_card = global_challenges.get_item_by_name(
+                        challenge_name
+                    )
+                    if challenge_card is not None:
+                        challenge_card.start_challenge(current_area)
+                        global_challenges.transfer_item(
+                            challenge_card,
+                            active_container
+                        )
+                        # Add area movement here
+                        save_containers(core_components)
 
 def build_team_hand(core_components: Dict[str, Container], team_name: str):
     team_name = team_name.lower().replace(" ", "_")
@@ -177,6 +218,7 @@ def build_team_hand(core_components: Dict[str, Container], team_name: str):
                         reward_card, 
                         core_components["discard_deck"]
                     )
+                    # Add reward_card effects here
                     save_containers(core_components)
                     
                 if st.button("Discard Card", key=f"discard_{card_num}"):
@@ -200,11 +242,15 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
                 st.write(f"{challenge_card.description}")
 
                 if st.button("Complete Challenge"):
+                    # Add area transferrence here
                     team_active.transfer_item(
                         challenge_card, 
                         core_components["discard_deck"]
                     )
                     core_components["reward_deck"].transfer_random_item(
                         core_components[f"{team_name}_hand"]
+                    )
+                    core_components["challenge_deck"].transfer_random_item(
+                        core_components["global_challenges"]
                     )
                     save_containers(core_components)

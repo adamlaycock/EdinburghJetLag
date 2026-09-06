@@ -4,6 +4,7 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import geopandas as gpd
 from shapely.geometry import Point
+from streamlit_geolocation import streamlit_geolocation
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -94,6 +95,7 @@ def initialise_core_components(
         ("discard_deck", "cards", 100),
         ("global_challenges", "cards", 5),
         ("unclaimed_areas", "areas", 15),
+        ("challenged_areas", "areas", 15),
 
         ("team_a_hand", "cards", 5),
         ("team_a_active", "cards", 1),
@@ -133,28 +135,23 @@ def initialise_core_components(
         for name, type_, max_items in specs
     }
 
-###############################################################################
-# Functions identifying current area using geolocation
-###############################################################################
+def get_current_area() -> str | None:
+    geolocation = streamlit_geolocation()
 
-def get_current_area(lat: float, lon: float, areas: gpd.GeoDataFrame) -> str:
-    coords = Point(lon, lat)
-    areas = areas.to_crs(epsg=4326)
+    lat = geolocation.get("latitude")
+    lon = geolocation.get("longitude")
 
-    matching_polygon = areas[areas.contains(coords)]
+    if lat is None or lon is None:
+        return None
+    
+    position = Point(lon, lat)
+    gdf = gpd.read_file(
+        "MapData/Board/GameBoard.geojson"
+    ).to_crs("EPSG:4326")
 
-    if not matching_polygon.empty:
-        area_name = matching_polygon["area_name"].values[0]
-        return area_name
-    else:
+    matching_polygon = gdf[gdf.geometry.covers(position)]
+
+    if matching_polygon.empty:
         return None
 
-###############################################################################
-# Functions for moving items
-###############################################################################
-
-def move_item(item_name: str, donor: Container, recipient: Container):
-    if recipient.has_space():
-        item = donor.get_item_by_name(item_name)
-        donor.remove_item(item)
-        recipient.add_item(item)
+    return matching_polygon.iloc[0]["name"]

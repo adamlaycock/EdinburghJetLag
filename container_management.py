@@ -184,11 +184,13 @@ class ChallengeCard(Card):
         card_type: str, 
         duration: int,
         challenge_start: Optional[float] = None,
-        challenge_end: Optional[float] = None
+        challenge_end: Optional[float] = None,
+        challenge_area: Optional[str] = None
     ):
         super().__init__(name, description, card_type)
         self.duration = duration
         self.challenge_start = challenge_start
+        self.challenge_area = challenge_area
 
         if challenge_end is not None:
             self.challenge_end = challenge_end
@@ -202,11 +204,13 @@ class ChallengeCard(Card):
         data["duration"] = self.duration
         data["challenge_start"] = self.challenge_start
         data["challenge_end"] = self.challenge_end
+        data["challenge_area"] = self.challenge_area
         return data
 
-    def start_challenge(self) -> None:
+    def start_challenge(self, area_name) -> None:
         self.challenge_start = time.time()
         self.challenge_end = self.challenge_start + self.duration
+        self.challenge_area = area_name
 
     def _check_expiration(self) -> None:
         if self.challenge_end is not None:
@@ -214,6 +218,7 @@ class ChallengeCard(Card):
             if now >= self.challenge_end:
                 self.challenge_start = None
                 self.challenge_end = None
+                self.challenge_area = None
 
     @property
     def is_active(self) -> bool:
