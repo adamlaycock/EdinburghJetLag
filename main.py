@@ -18,3 +18,9 @@ with tab1:
                 a_players, b_players, c_players
             )
             save_containers(core_comps)
+
+with tab2:
+    build_game_map()
+
+with tab3:
+    build_global_challenges()

@@ -124,10 +124,14 @@ def build_game_map() -> None:
         cmap=colors,
         categorical=True,
         tooltip=False,
-        popup=["name", "control", "is_prot"],
+        popup=["name", "control"],
         tiles="OpenStreetMap",
         style_kwds={"style_function": style_status},
     )
+
+    for key in list(m._children):
+        if "legend" in key.lower():
+            del m._children[key]
 
     bounds = full_gdf.total_bounds
     minx, miny, maxx, maxy = bounds
@@ -136,7 +140,7 @@ def build_game_map() -> None:
     m.options["maxBounds"] = [[miny, minx], [maxy, maxx]]
     m.options["maxBoundsViscosity"] = 1
     m.options["zoomSnap"] = 0.1
-    m.options["minZoom"] = 12.5
+    m.options["minZoom"] = 12
 
     st_folium(m, width=700, height=500, returned_objects=[])
     
