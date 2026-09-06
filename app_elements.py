@@ -5,7 +5,7 @@ import pandas as pd
 import geopandas as gpd
 from typing import List, Dict
 from game_functions import get_teams_data, clear_team_data, load_containers, update_teams_data
-from container_management import Container
+from container_management import Container, ChallengeCard
 
 CONN = st.connection("gsheets", type=GSheetsConnection)
 
@@ -123,6 +123,7 @@ def build_game_map() -> None:
         column="control",
         cmap=colors,
         categorical=True,
+        legend=False,
         tooltip=False,
         popup=["name", "control"],
         tiles="OpenStreetMap",
@@ -143,4 +144,18 @@ def build_game_map() -> None:
     m.options["minZoom"] = 12
 
     st_folium(m, width=700, height=500, returned_objects=[])
-    
+
+def build_global_challenges() -> None:
+    core_components = load_containers()
+    global_challenges = core_components["global_challenges"]
+
+    if global_challenges.items:
+        st.header("Available Challenges:")
+        for challenge_card, card_num in zip(
+            global_challenges.items,
+            ["one", "two", "three", "four", "five"]
+        ):
+            with st.form(f"card_{card_num}"):
+                st.subheader(challenge_card.name)
+                st.write(f"{challenge_card.description}")
+                st.write(f"This challenge must be completed within **{int(challenge_card.duration / 60)} minutes**.")

@@ -2,7 +2,6 @@ from app_elements import *
 from container_management import *
 from game_functions import *
 
-
 tab1, tab2, tab3, tab4 = st.tabs(["Players", "Game Map", "Global Challenges", "Team Hands"])
 
 with tab1:
