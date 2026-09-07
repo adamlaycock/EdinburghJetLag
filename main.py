@@ -5,6 +5,16 @@ from game_functions import *
 teams_data = get_teams_data()
 core_comps = load_containers()
 
+if st.button("add cards"):
+    core_comps["challenge_deck"].items = initialise_decks("challenge")
+    core_comps["reward_deck"].items = initialise_decks("reward")
+    save_containers(core_comps)
+
+if st.button("move_challenges"):
+    for i in range(5):
+        core_comps["challenge_deck"].transfer_random_item(core_comps["global_challenges"])
+    save_containers(core_comps)
+ 
 tab1, tab2, tab3, tab4 = st.tabs(["Players", "Game Map", "Global Challenges", "Team Hands"])
 
 with tab1:
@@ -27,6 +37,8 @@ with tab2:
 with tab3:
     build_global_challenges(core_comps)
 
+    build_start_challenge(core_comps)
+
 with tab4:
     team_name = st.selectbox(
         "Select team:",
@@ -35,6 +47,9 @@ with tab4:
     )
 
     if team_name:
+
+        st.header("Active Challenge:")
         build_team_active(core_comps, team_name)
 
+        st.header("Available Cards:")
         build_team_hand(core_comps, team_name)

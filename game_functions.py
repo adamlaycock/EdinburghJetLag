@@ -8,9 +8,6 @@ from streamlit_geolocation import streamlit_geolocation
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-###############################################################################
-# Functions for communicating with "team_mgmt"
-###############################################################################
 def update_teams_data(new_team_data):
     conn.update(worksheet="team_mgmt", data=new_team_data)
 
@@ -32,10 +29,6 @@ def clear_team_data(team_name: str) -> None:
 
     conn.update(worksheet="team_mgmt", data=new_team_data)
     st.cache_data.clear()
-
-###############################################################################
-# Functions for communicating with "container_mgmt"
-###############################################################################
 
 def save_containers(containers: dict[str, Container]) -> None:
     df = conn.read(worksheet="container_mgmt", ttl=0)
@@ -62,10 +55,6 @@ def load_containers() -> Dict[str, Container]:
         row["container_key"]: Container.from_json(row["json"])
         for _, row in df.iterrows()
     }
-
-###############################################################################
-# Functions for starting the game
-###############################################################################
 
 def initialise_core_components(
     team_a_players: List[str],
@@ -135,7 +124,7 @@ def initialise_core_components(
         for name, type_, max_items in specs
     }
 
-def get_current_area() -> str | None:
+def get_current_coords() -> Point | None:
     geolocation = streamlit_geolocation()
 
     lat = geolocation.get("latitude")
@@ -144,14 +133,55 @@ def get_current_area() -> str | None:
     if lat is None or lon is None:
         return None
     
-    position = Point(lon, lat)
-    gdf = gpd.read_file(
-        "MapData/Board/GameBoard.geojson"
-    ).to_crs("EPSG:4326")
+    return Point(lon, lat)
 
-    matching_polygon = gdf[gdf.geometry.covers(position)]
+def get_current_area(position: Point) -> str | None:
+    if position:
+        gdf = gpd.read_file(
+            "MapData/Board/GameBoard.geojson"
+        ).to_crs("EPSG:4326")
 
-    if matching_polygon.empty:
-        return None
+        matching_polygon = gdf[gdf.geometry.covers(position)]
 
-    return matching_polygon.iloc[0]["name"]
+        if matching_polygon.empty:
+            return None
+
+        return matching_polygon.iloc[0]["name"]
+    return None
+
+
+def initialise_decks(mode: str) -> None:
+    challenge_items = [
+        ChallengeCard("challenge 1", "challenge 1 desc", "challenge", 3600),
+        ChallengeCard("challenge 2", "challenge 2 desc", "challenge", 3600),
+        ChallengeCard("challenge 3", "challenge 3 desc", "challenge", 3600),
+        ChallengeCard("challenge 4", "challenge 4 desc", "challenge", 3600),
+        ChallengeCard("challenge 5", "challenge 5 desc", "challenge", 3600),
+        ChallengeCard("challenge 6", "challenge 6 desc", "challenge", 3600),
+        ChallengeCard("challenge 7", "challenge 7 desc", "challenge", 3600),
+        ChallengeCard("challenge 8", "challenge 8 desc", "challenge", 3600),
+        ChallengeCard("challenge 9", "challenge 9 desc", "challenge", 3600),
+        ChallengeCard("challenge 10", "challenge 10 desc", "challenge", 3600),
+        ChallengeCard("challenge 11", "challenge 11 desc", "challenge", 3600),
+        ChallengeCard("challenge 12", "challenge 12 desc", "challenge", 3600),
+    ]
+    reward_items = [
+        RewardCard("reward 1", "reward 1 desc", "reward", "curse"),
+        RewardCard("reward 2", "reward 1 desc", "reward", "curse"),
+        RewardCard("reward 3", "reward 1 desc", "reward", "curse"),
+        RewardCard("reward 4", "reward 1 desc", "reward", "curse"),
+        RewardCard("reward 5", "reward 1 desc", "reward", "curse"),
+        RewardCard("reward 6", "reward 1 desc", "reward", "curse"),
+        RewardCard("reward 7", "reward 1 desc", "reward", "powerup"),
+        RewardCard("reward 8", "reward 1 desc", "reward", "powerup"),
+        RewardCard("reward 9", "reward 1 desc", "reward", "powerup"),
+        RewardCard("reward 10", "reward 1 desc", "reward", "powerup"),
+        RewardCard("reward 11", "reward 1 desc", "reward", "powerup"),
+        RewardCard("reward 12", "reward 1 desc", "reward", "powerup"),
+    ]
+
+    if mode == "challenge":
+        return challenge_items
+
+    return reward_items
+    

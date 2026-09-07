@@ -5,7 +5,7 @@ from streamlit_geolocation import streamlit_geolocation
 import pandas as pd
 import geopandas as gpd
 from typing import List, Dict, Optional
-from game_functions import get_teams_data, clear_team_data, load_containers, update_teams_data, save_containers, get_current_area
+from game_functions import *
 from container_management import Container, ChallengeCard
 from shapely.geometry import Point
 import time
@@ -13,10 +13,6 @@ import time
 CONN = st.connection("gsheets", type=GSheetsConnection)
 
 TEAMS = ["Team A", "Team B", "Team C"]
-
-###############################################################################
-# Functions for communicating with "team_mgmt"
-###############################################################################
 
 def build_player_form() -> None:
     with st.form("add_player_form", clear_on_submit=True):
@@ -154,7 +150,7 @@ def build_global_challenges(core_components) -> None:
             global_challenges.items,
             ["one", "two", "three", "four", "five"]
         ):
-            with st.form(f"challenge_card_{card_num}"):
+            with st.container(border=True):
                 st.subheader(challenge_card.name)
                 st.write(f"{challenge_card.description}")
                 st.write(f"This challenge must be completed within **{int(challenge_card.duration / 60)} minutes**.")
@@ -163,7 +159,8 @@ def build_start_challenge(core_components) -> None:
     global_challenges = core_components["global_challenges"]
 
     if global_challenges.items:
-        with st.form("start_challenge"):
+        st.header("Start a Challenge:")
+        with st.form("start_challenge", clear_on_submit=True):
             team_name = st.selectbox(
                 "Select team:",
                 options=[None, "Team A", "Team B", "Team C"],
@@ -173,29 +170,31 @@ def build_start_challenge(core_components) -> None:
                 "Select challenge:",
                 options=[challenge_card.name for challenge_card in global_challenges.items]
             )
-            current_area = get_current_area()
-            if current_area:
-                st.write(f"Current Area: {current_area}")
+            # current_area = get_current_area(get_current_coords())
+            # if current_area:
+            #     st.write(f"Current Area: {current_area}")
+            current_area = st.text_input("PLACEHOLDER! Input current areaa:")
 
-    if st.form_submit_button("Start Challenge", clear_on_submit=True):
-        if team_name and challenge_name and current_area:
-            challenged_areas = core_components["challenged_areas"]
-            active_container = core_components[f"{team_name}_active"]
+            if st.form_submit_button("Start Challenge"):
+                if team_name and challenge_name and current_area:
+                    team_name = team_name.lower().replace(" ", "_")
+                    challenged_areas = core_components["challenged_areas"]
+                    active_container = core_components[f"{team_name}_active"]
 
-            if challenged_areas.get_item_by_name(current_area) is None:
-                # Need to check that the area is not protected
-                if active_container.has_space():
-                    challenge_card = global_challenges.get_item_by_name(
-                        challenge_name
-                    )
-                    if challenge_card is not None:
-                        challenge_card.start_challenge(current_area)
-                        global_challenges.transfer_item(
-                            challenge_card,
-                            active_container
-                        )
-                        # Add area movement here
-                        save_containers(core_components)
+                    if challenged_areas.get_item_by_name(current_area) is None:
+                        # Need to check that the area is not protected
+                        if active_container.has_space():
+                            challenge_card = global_challenges.get_item_by_name(
+                                challenge_name
+                            )
+                            if challenge_card is not None:
+                                challenge_card.start_challenge(current_area)
+                                global_challenges.transfer_item(
+                                    challenge_card,
+                                    active_container
+                                )
+                                # Add area movement here
+                                save_containers(core_components)
 
 def build_team_hand(core_components: Dict[str, Container], team_name: str):
     team_name = team_name.lower().replace(" ", "_")
@@ -203,12 +202,11 @@ def build_team_hand(core_components: Dict[str, Container], team_name: str):
     team_hand = core_components[f"{team_name}_hand"]
 
     if team_hand.items:
-        st.header("Available Cards:")
         for reward_card, card_num in zip(
             team_hand.items, 
             ["one", "two", "three", "four", "five"]
         ):
-            with st.form(f"reward_card_{card_num}"):
+            with st.container(border=True):
                 st.subheader(reward_card.name)
                 st.write(f"{reward_card.reward_type}")
                 st.write(f"{reward_card.description}")
@@ -220,6 +218,7 @@ def build_team_hand(core_components: Dict[str, Container], team_name: str):
                     )
                     # Add reward_card effects here
                     save_containers(core_components)
+                    st.rerun()
                     
                 if st.button("Discard Card", key=f"discard_{card_num}"):
                     team_hand.transfer_item(
@@ -227,6 +226,7 @@ def build_team_hand(core_components: Dict[str, Container], team_name: str):
                         core_components["discard_deck"]
                     )
                     save_containers(core_components)
+                    st.rerun()
 
 def build_team_active(core_components: Dict[str, Container], team_name:str):
     team_name = team_name.lower().replace(" ", "_")
@@ -234,11 +234,9 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
     team_active = core_components[f"{team_name}_active"]
 
     if team_active.items:
-        st.header("Active Challenge:")
         for challenge_card in team_active.items:
-            with st.form(f"active_challenge"):
+            with st.container(border=True):
                 st.subheader(challenge_card.name)
-                st.write(f"{challenge_card.reward_type}")
                 st.write(f"{challenge_card.description}")
 
                 if st.button("Complete Challenge"):
@@ -254,4 +252,4 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
                         core_components["global_challenges"]
                     )
                     save_containers(core_components)
-                    
+                    st.rerun()
