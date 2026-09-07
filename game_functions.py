@@ -5,6 +5,7 @@ from streamlit_gsheets import GSheetsConnection
 import geopandas as gpd
 from shapely.geometry import Point
 from streamlit_geolocation import streamlit_geolocation
+from typing import Optional
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -184,4 +185,24 @@ def initialise_decks(mode: str) -> None:
         return challenge_items
 
     return reward_items
-    
+
+def find_area_by_name(
+    area_name: str,
+    core_comps: Dict[str, Container],
+    exclusion: Optional[str],
+) -> Optional[tuple[Any, str]]:
+    container_names = [
+        "team_a_areas", "team_b_areas", "team_c_areas", "unclaimed_areas",
+    ]
+
+    if exclusion:
+        container_names.remove(exclusion)
+
+    for name in container_names:
+        container = core_comps[name]
+        item = container.get_item_by_name(area_name)
+
+        if item is not None:
+            return item, container
+
+    return None

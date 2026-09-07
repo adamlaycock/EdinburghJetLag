@@ -182,19 +182,28 @@ def build_start_challenge(core_components) -> None:
                     active_container = core_components[f"{team_name}_active"]
 
                     if challenged_areas.get_item_by_name(current_area) is None:
-                        # Need to check that the area is not protected
-                        if active_container.has_space():
-                            challenge_card = global_challenges.get_item_by_name(
-                                challenge_name
-                            )
-                            if challenge_card is not None:
-                                challenge_card.start_challenge(current_area)
-                                global_challenges.transfer_item(
-                                    challenge_card,
-                                    active_container
+                        area, current_area_container = find_area_by_name(
+                            current_area, 
+                            core_comps=core_components, 
+                            exclusion=active_container.name
+                        )
+                        if not area.is_prot:
+                            if active_container.has_space():
+                                challenge_card = global_challenges.get_item_by_name(
+                                    challenge_name
                                 )
-                                # Add area movement here
-                                save_containers(core_components)
+                                if challenge_card is not None:
+                                    challenge_card.start_challenge(current_area)
+                                    global_challenges.transfer_item(
+                                        challenge_card,
+                                        active_container
+                                    )
+                                    current_area_container.transfer_item(
+                                        area,
+                                        core_components["challenged_areas"]
+                                    )
+                                    save_containers(core_components)
+                                    st.rerun()
 
 def build_team_hand(core_components: Dict[str, Container], team_name: str):
     team_name = team_name.lower().replace(" ", "_")
