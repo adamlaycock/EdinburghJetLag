@@ -24,7 +24,8 @@ def item_from_dict(data: Union[Dict[str, Any], Any]) -> Any:
             card_type=data["card_type"],
             duration=data["duration"],
             challenge_start=data.get("challenge_start"),
-            challenge_end=data.get("challenge_end")
+            challenge_end=data.get("challenge_end"),
+            challenge_area=data.get("challenge_area")
         )
     elif model_type == "RewardCard":
         return RewardCard(
@@ -219,6 +220,11 @@ class ChallengeCard(Card):
                 self.challenge_start = None
                 self.challenge_end = None
                 self.challenge_area = None
+
+    def forfeit(self) -> None:
+        self.challenge_start = None
+        self.challenge_end = None
+        self.challenge_area = None
 
     @property
     def is_active(self) -> bool:

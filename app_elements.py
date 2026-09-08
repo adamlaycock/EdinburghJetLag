@@ -94,6 +94,7 @@ def build_game_map(core_components) -> None:
         geometry="geometry",
         crs="EPSG:4326",
     )
+    full_gdf["is_prot"] = full_gdf["is_prot"].astype(bool)
 
     full_gdf["control"] = pd.Categorical(
         full_gdf["control"],
@@ -121,7 +122,7 @@ def build_game_map(core_components) -> None:
         categorical=True,
         legend=False,
         tooltip=False,
-        popup=["name", "control"],
+        popup=["name", "control", "is_prot"],
         tiles="OpenStreetMap",
         style_kwds={"style_function": style_status},
     )
@@ -140,6 +141,7 @@ def build_game_map(core_components) -> None:
     m.options["minZoom"] = 12
 
     st_folium(m, width=700, height=500, returned_objects=[])
+
         
 def build_global_challenges(core_components) -> None:
     global_challenges = core_components["global_challenges"]
@@ -180,12 +182,13 @@ def build_start_challenge(core_components) -> None:
                     team_name = team_name.lower().replace(" ", "_")
                     challenged_areas = core_components["challenged_areas"]
                     active_container = core_components[f"{team_name}_active"]
+                    areas_container = core_components[f"{team_name}_areas"]
 
                     if challenged_areas.get_item_by_name(current_area) is None:
                         area, current_area_container = find_area_by_name(
                             current_area, 
                             core_comps=core_components, 
-                            exclusion=active_container.name
+                            exclusion=areas_container.name
                         )
                         if not area.is_prot:
                             if active_container.has_space():
@@ -241,6 +244,7 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
     team_name = team_name.lower().replace(" ", "_")
 
     team_active = core_components[f"{team_name}_active"]
+    team_areas = core_components[f"{team_name}_areas"]
 
     if team_active.items:
         for challenge_card in team_active.items:
@@ -249,7 +253,10 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
                 st.write(f"{challenge_card.description}")
 
                 if st.button("Complete Challenge"):
-                    # Add area transferrence here
+                    core_components["challenged_areas"].transfer_item_by_name(
+                        challenge_card.challenge_area,
+                        team_areas
+                    )
                     team_active.transfer_item(
                         challenge_card, 
                         core_components["discard_deck"]
