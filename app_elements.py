@@ -137,12 +137,12 @@ def build_game_map(core_components) -> None:
     m.fit_bounds([[miny, minx], [maxy, maxx]])
     m.options["maxBounds"] = [[miny, minx], [maxy, maxx]]
     m.options["maxBoundsViscosity"] = 1
-    m.options["zoomSnap"] = 0.1
-    m.options["minZoom"] = 12
+    m.options["zoomSnap"] = 0.75
+    m.options["minZoom"] = 12.5
 
     st_folium(m, width=700, height=500, returned_objects=[])
 
-        
+@st.fragment(run_every="1s") 
 def build_global_challenges(core_components) -> None:
     global_challenges = core_components["global_challenges"]
 
@@ -185,7 +185,7 @@ def build_start_challenge(core_components) -> None:
                     areas_container = core_components[f"{team_name}_areas"]
 
                     if challenged_areas.get_item_by_name(current_area) is None:
-                        area, current_area_container = find_area_by_name(
+                        area, original_container = find_area_by_name(
                             current_area, 
                             core_comps=core_components, 
                             exclusion=areas_container.name
@@ -196,12 +196,12 @@ def build_start_challenge(core_components) -> None:
                                     challenge_name
                                 )
                                 if challenge_card is not None:
-                                    challenge_card.start_challenge(current_area)
+                                    challenge_card.start_challenge(current_area, original_container.name)
                                     global_challenges.transfer_item(
                                         challenge_card,
                                         active_container
                                     )
-                                    current_area_container.transfer_item(
+                                    original_container.transfer_item(
                                         area,
                                         core_components["challenged_areas"]
                                     )
@@ -240,6 +240,7 @@ def build_team_hand(core_components: Dict[str, Container], team_name: str):
                     save_containers(core_components)
                     st.rerun()
 
+@st.fragment(run_every="1s")
 def build_team_active(core_components: Dict[str, Container], team_name:str):
     team_name = team_name.lower().replace(" ", "_")
 
@@ -248,15 +249,28 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
 
     if team_active.items:
         for challenge_card in team_active.items:
+            if challenge_card.is_expired:
+                core_components["challenged_areas"].transfer_item_by_name(
+                    challenge_card.challenge_area,
+                    core_components[f"{challenge_card.area_og_container}"]
+                )
+                challenge_card.reset_challenge()
+                team_active.transfer_item(
+                        challenge_card, 
+                        core_components["global_challenges"]
+                    )
+                save_containers(core_components)
+
             with st.container(border=True):
                 st.subheader(challenge_card.name)
                 st.write(f"{challenge_card.description}")
-
+                build_time_remaining(challenge_card)
                 if st.button("Complete Challenge"):
                     core_components["challenged_areas"].transfer_item_by_name(
                         challenge_card.challenge_area,
                         team_areas
                     )
+                    challenge_card.reset_challenge()
                     team_active.transfer_item(
                         challenge_card, 
                         core_components["discard_deck"]
@@ -269,3 +283,18 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
                     )
                     save_containers(core_components)
                     st.rerun()
+
+def build_time_remaining(challenge_card) -> None:
+    time_remaining = challenge_card.time_remaining
+
+    if time_remaining is None:
+        return
+
+    total_seconds = int(time_remaining.total_seconds())
+
+    st.write(
+        f"Time Remaining: **"
+        f"{total_seconds // 60:02d}:"
+        f"{total_seconds % 60:02d}**"
+    )
+
