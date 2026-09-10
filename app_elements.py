@@ -264,6 +264,7 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
             with st.container(border=True):
                 st.subheader(challenge_card.name)
                 st.write(f"{challenge_card.description}")
+                st.write(f"Challenging: {challenge_card.challenge_area}")
                 build_time_remaining(challenge_card)
                 if st.button("Complete Challenge"):
                     core_components["challenged_areas"].transfer_item_by_name(
