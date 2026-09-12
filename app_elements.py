@@ -299,3 +299,39 @@ def build_time_remaining(challenge_card) -> None:
         f"{total_seconds % 60:02d}**"
     )
 
+def build_team_curses(
+    core_components: Dict[str, Container], 
+    team_name: str
+):
+    team_name = team_name.lower().replace(" ", "_")
+    team_curses = core_components[f"{team_name}_curses"]
+
+    if team_curses.items:
+            for curse_card, card_num in zip(
+                team_curses.items, 
+                ["one", "two", "three", "four", "five"]
+            ):
+                with st.container(border=True):
+                    st.subheader(f"{curse_card.name}")
+                    st.write(f"{curse_card.description}")
+                    if st.button("Clear Curse", key=f"{card_num}_clear"):
+                        if confirm_action_dialog("curse"):
+                            team_curses.transfer_item(
+                                curse_card,
+                                core_components["discard_deck"]
+                            )
+                            save_containers(core_components)
+
+
+@st.dialog("Confirm Action")
+def confirm_action_dialog(mode: str) -> bool:
+    if mode == "curse":
+        st.write("Have you met the requirements to clear this curse from your team?")
+        st.write("Please confirm that you wish to clear this curse below:")
+        if st.button("Clear Curse"):
+            return True
+    if mode == "challenge":
+        st.write("Have you met complete this challenge?")
+        st.write("Please confirm that you wish to complete this challenge below:")
+        if st.button("Complete Challenge"):
+            return True

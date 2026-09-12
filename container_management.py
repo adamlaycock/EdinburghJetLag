@@ -34,6 +34,7 @@ def item_from_dict(data: Union[Dict[str, Any], Any]) -> Any:
             description=data["description"],
             card_type=data["card_type"],
             reward_type=data["reward_type"],
+            msg=data["msg"]
         )
     elif model_type == "Card":
         return Card(
@@ -259,13 +260,16 @@ class RewardCard(Card):
             description: str, 
             card_type: str, 
             reward_type: str,
+            msg: str
     ):
         super().__init__(name, description, card_type)
         self.reward_type = reward_type
+        self.msg = msg
 
     def to_dict(self) -> Dict[str, Any]:
         data = super().to_dict()
         data["reward_type"] = self.reward_type
+        data["msg"] = self.msg
         return data
 
 

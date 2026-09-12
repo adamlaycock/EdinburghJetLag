@@ -91,16 +91,19 @@ def initialise_core_components(
         ("team_a_active", "cards", 1),
         ("team_a_players", "players", 5),
         ("team_a_areas", "areas", 15),
+        ("team_a_curses", "cards", 5)
 
         ("team_b_hand", "cards", 5),
         ("team_b_active", "cards", 1),
         ("team_b_players", "players", 5),
         ("team_b_areas", "areas", 15),
+        ("team_b_curses", "cards", 5)
 
         ("team_c_hand", "cards", 5),
         ("team_c_active", "cards", 1),
         ("team_c_players", "players", 5),
         ("team_c_areas", "areas", 15),
+        ("team_c_curses", "cards", 5),
     ]
 
     player_items = {

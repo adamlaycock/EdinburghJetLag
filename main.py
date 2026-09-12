@@ -45,11 +45,12 @@ with tab4:
         options=[None, "Team A", "Team B", "Team C"],
         index=0
     )
-
     if team_name:
-
         st.header("Active Challenge:")
         build_team_active(core_comps, team_name)
+
+        st.header("Active Curses:")
+        build_team_curses(core_comps, team_name)
 
         st.header("Available Cards:")
         build_team_hand(core_comps, team_name)
