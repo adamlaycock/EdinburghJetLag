@@ -6,6 +6,7 @@ import geopandas as gpd
 from shapely.geometry import Point
 from streamlit_geolocation import streamlit_geolocation
 from typing import Optional
+import requests
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -209,3 +210,39 @@ def find_area_by_name(
             return item, container
 
     return None
+
+def send_discord_notification(
+    sender_team: str,
+    recipient_team: str,
+    raw_message: str
+) -> None:
+    webhook_url = "" # Add webhook url in st.secrets
+
+    sender_key = sender_team.lower().replace(" ", "_")
+    recipient_key = recipient_team.lower().replace(" ", "_")
+
+    team_id_mapping = {
+        "team_a": "1545068980996145182",
+        "team_b": "1545069081256788018",
+        "team_c": "1545069296064004166"
+    }
+
+    sender_role_id = team_id_mapping.get(sender_key, "")
+    recipient_role_id = team_id_mapping.get(recipient_key, "")
+
+    processed_msg = raw_message \
+        .replace("--TEAM_1_ID--", sender_role_id) \
+        .replace("--TEAM_2_ID--", recipient_role_id)
+
+    payload = {
+        "content": processed_msg,
+        "username": "EdinburghJetLag"
+    }
+    
+    requests.post(webhook_url, json=payload)
+
+send_discord_notification(
+    "Team A",
+    "Team B",
+    "<@&--TEAM_1_ID--> has cast the Curse of the Obsessive Ornithologists on <@&--TEAM_2_ID-->."
+)
