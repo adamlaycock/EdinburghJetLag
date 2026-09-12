@@ -52,6 +52,7 @@ def save_containers(containers: dict[str, Container]) -> None:
 @st.cache_data(ttl=30)
 def load_containers() -> Dict[str, Container]:
     df = conn.read(worksheet="container_mgmt", ttl=0)
+    df = df.dropna(subset=["container_key", "json"])
 
     return {
         row["container_key"]: Container.from_json(row["json"])
@@ -92,13 +93,13 @@ def initialise_core_components(
         ("team_a_active", "cards", 1),
         ("team_a_players", "players", 5),
         ("team_a_areas", "areas", 15),
-        ("team_a_curses", "cards", 5)
+        ("team_a_curses", "cards", 5),
 
         ("team_b_hand", "cards", 5),
         ("team_b_active", "cards", 1),
         ("team_b_players", "players", 5),
         ("team_b_areas", "areas", 15),
-        ("team_b_curses", "cards", 5)
+        ("team_b_curses", "cards", 5),
 
         ("team_c_hand", "cards", 5),
         ("team_c_active", "cards", 1),
@@ -170,19 +171,13 @@ def initialise_decks(mode: str) -> None:
         ChallengeCard("challenge 11", "challenge 11 desc", "challenge", 3600),
         ChallengeCard("challenge 12", "challenge 12 desc", "challenge", 3600),
     ]
+
+    reward_df = pd.read_csv(
+        "reward_cards.csv"
+    )
     reward_items = [
-        RewardCard("reward 1", "reward 1 desc", "reward", "curse"),
-        RewardCard("reward 2", "reward 1 desc", "reward", "curse"),
-        RewardCard("reward 3", "reward 1 desc", "reward", "curse"),
-        RewardCard("reward 4", "reward 1 desc", "reward", "curse"),
-        RewardCard("reward 5", "reward 1 desc", "reward", "curse"),
-        RewardCard("reward 6", "reward 1 desc", "reward", "curse"),
-        RewardCard("reward 7", "reward 1 desc", "reward", "powerup"),
-        RewardCard("reward 8", "reward 1 desc", "reward", "powerup"),
-        RewardCard("reward 9", "reward 1 desc", "reward", "powerup"),
-        RewardCard("reward 10", "reward 1 desc", "reward", "powerup"),
-        RewardCard("reward 11", "reward 1 desc", "reward", "powerup"),
-        RewardCard("reward 12", "reward 1 desc", "reward", "powerup"),
+        RewardCard(**row) 
+        for row in reward_df.to_dict(orient="records")
     ]
 
     if mode == "challenge":
@@ -212,14 +207,10 @@ def find_area_by_name(
     return None
 
 def send_discord_notification(
-    sender_team: str,
-    recipient_team: str,
-    raw_message: str
+    sender_key: str,
+    recipient_key: str,
+    card: ChallengeCard
 ) -> None:
-    webhook_url = "" # Add webhook url in st.secrets
-
-    sender_key = sender_team.lower().replace(" ", "_")
-    recipient_key = recipient_team.lower().replace(" ", "_")
 
     team_id_mapping = {
         "team_a": "1545068980996145182",
@@ -230,19 +221,49 @@ def send_discord_notification(
     sender_role_id = team_id_mapping.get(sender_key, "")
     recipient_role_id = team_id_mapping.get(recipient_key, "")
 
-    processed_msg = raw_message \
+    processed_msg = card.msg \
         .replace("--TEAM_1_ID--", sender_role_id) \
-        .replace("--TEAM_2_ID--", recipient_role_id)
+        .replace("--TEAM_2_ID--", recipient_role_id) \
+        .replace("--CARD_NAME--", card.name)
 
     payload = {
         "content": processed_msg,
         "username": "EdinburghJetLag"
     }
     
-    requests.post(webhook_url, json=payload)
+    requests.post(st.secrets["discord_webhook"], json=payload)
 
-send_discord_notification(
-    "Team A",
-    "Team B",
-    "<@&--TEAM_1_ID--> has cast the Curse of the Obsessive Ornithologists on <@&--TEAM_2_ID-->."
-)
+def start_challenge(
+    core_components: Dict[str, Container],
+    team_name: str,
+    challenge_name: str,
+    challenge_area: str
+):
+    team_name = team_name.lower().replace(" ", "_")
+    active_container = core_components[f"{team_name}_active"]
+    areas_container = core_components[f"{team_name}_areas"]
+
+    if core_components["challenged_areas"].get_item_by_name(challenge_area) is None:
+        area, original_container = find_area_by_name(
+            challenge_area, 
+            core_comps=core_components, 
+            exclusion=areas_container.name
+        )
+        if not area.is_prot:
+            if active_container.has_space():
+                challenge_card = core_components["global_challenges"].get_item_by_name(
+                    challenge_name
+                )
+                if challenge_card is not None:
+                    challenge_card.start_challenge(challenge_area, original_container.name)
+                    core_components["global_challenges"].transfer_item(
+                        challenge_card,
+                        active_container
+                    )
+                    original_container.transfer_item(
+                        area,
+                        core_components["challenged_areas"]
+                    )
+                    save_containers(core_components)
+                    st.rerun()
+                    

@@ -9,6 +9,7 @@ from game_functions import *
 from container_management import Container, ChallengeCard
 from shapely.geometry import Point
 import time
+import re
 
 CONN = st.connection("gsheets", type=GSheetsConnection)
 
@@ -157,57 +158,6 @@ def build_global_challenges(core_components) -> None:
                 st.write(f"{challenge_card.description}")
                 st.write(f"This challenge must be completed within **{int(challenge_card.duration / 60)} minutes**.")
 
-def build_start_challenge(core_components) -> None:
-    global_challenges = core_components["global_challenges"]
-
-    if global_challenges.items:
-        st.header("Start a Challenge:")
-        with st.form("start_challenge", clear_on_submit=True):
-            team_name = st.selectbox(
-                "Select team:",
-                options=[None, "Team A", "Team B", "Team C"],
-                index=0
-            )
-            challenge_name = st.selectbox(
-                "Select challenge:",
-                options=[challenge_card.name for challenge_card in global_challenges.items]
-            )
-            # current_area = get_current_area(get_current_coords())
-            # if current_area:
-            #     st.write(f"Current Area: {current_area}")
-            current_area = st.text_input("PLACEHOLDER! Input current areaa:")
-
-            if st.form_submit_button("Start Challenge"):
-                if team_name and challenge_name and current_area:
-                    team_name = team_name.lower().replace(" ", "_")
-                    challenged_areas = core_components["challenged_areas"]
-                    active_container = core_components[f"{team_name}_active"]
-                    areas_container = core_components[f"{team_name}_areas"]
-
-                    if challenged_areas.get_item_by_name(current_area) is None:
-                        area, original_container = find_area_by_name(
-                            current_area, 
-                            core_comps=core_components, 
-                            exclusion=areas_container.name
-                        )
-                        if not area.is_prot:
-                            if active_container.has_space():
-                                challenge_card = global_challenges.get_item_by_name(
-                                    challenge_name
-                                )
-                                if challenge_card is not None:
-                                    challenge_card.start_challenge(current_area, original_container.name)
-                                    global_challenges.transfer_item(
-                                        challenge_card,
-                                        active_container
-                                    )
-                                    original_container.transfer_item(
-                                        area,
-                                        core_components["challenged_areas"]
-                                    )
-                                    save_containers(core_components)
-                                    st.rerun()
-
 def build_team_hand(core_components: Dict[str, Container], team_name: str):
     team_name = team_name.lower().replace(" ", "_")
 
@@ -224,13 +174,20 @@ def build_team_hand(core_components: Dict[str, Container], team_name: str):
                 st.write(f"{reward_card.description}")
 
                 if st.button("Use Card", key=f"use_{card_num}"):
-                    team_hand.transfer_item(
-                        reward_card, 
-                        core_components["discard_deck"]
-                    )
-                    # Add reward_card effects here
-                    save_containers(core_components)
-                    st.rerun()
+                    if reward_card.reward_type == "powerup":
+                        send_discord_notification(
+                            team_name,
+                            None,
+                            reward_card
+                        )
+                        team_hand.transfer_item(
+                            reward_card, 
+                            core_components["discard_deck"]
+                        )
+                        save_containers(core_components)
+                        st.rerun()
+                    else:
+                        choose_target_team(reward_card, team_name, core_components)
                     
                 if st.button("Discard Card", key=f"discard_{card_num}"):
                     team_hand.transfer_item(
@@ -315,23 +272,80 @@ def build_team_curses(
                     st.subheader(f"{curse_card.name}")
                     st.write(f"{curse_card.description}")
                     if st.button("Clear Curse", key=f"{card_num}_clear"):
-                        if confirm_action_dialog("curse"):
-                            team_curses.transfer_item(
-                                curse_card,
-                                core_components["discard_deck"]
-                            )
-                            save_containers(core_components)
+                        team_curses.transfer_item(
+                            curse_card,
+                            core_components["discard_deck"]
+                        )
+                        save_containers(core_components)
+                        st.rerun()
 
 
-@st.dialog("Confirm Action")
-def confirm_action_dialog(mode: str) -> bool:
-    if mode == "curse":
-        st.write("Have you met the requirements to clear this curse from your team?")
-        st.write("Please confirm that you wish to clear this curse below:")
-        if st.button("Clear Curse"):
-            return True
-    if mode == "challenge":
-        st.write("Have you met complete this challenge?")
-        st.write("Please confirm that you wish to complete this challenge below:")
-        if st.button("Complete Challenge"):
-            return True
+@st.dialog("Choose Target Team")
+def choose_target_team(reward_card: Any, team_name: str, core_components: Dict[str, Any]):
+    st.write(f"Select a target team to apply **{reward_card.name}**:")
+    
+    target_team = st.selectbox(
+        "Select team:",
+        options=["Team A", "Team B", "Team C"],
+        index=None
+    )
+    
+    if st.button("Submit"):
+        if target_team:
+            recipient = target_team.lower().replace(" ", "_")
+            send_discord_notification(team_name, recipient, reward_card)
+
+            team_hand = core_components[f"{team_name}_hand"]
+            team_hand.transfer_item(
+                reward_card,
+                core_components[f"{recipient}_curses"]
+            )
+            save_containers(core_components)
+            st.rerun()
+
+from typing import Dict, Any
+
+@st.dialog("Start a Challenge")
+def build_start_challenge(core_components: Dict[str, Any]) -> None:
+    team_name = st.selectbox(
+        "Select a team:",
+        options=[None, "Team A", "Team B", "Team C"],
+        index=0
+    )
+    challenge_name = None
+    if team_name:
+        challenge_name = st.selectbox(
+            "Select a challenge:",
+            options=[
+                challenge_card.name 
+                for challenge_card in core_components["global_challenges"].items
+            ]
+        )
+    if challenge_name:
+        all_containers = ["team_a_areas", "team_b_areas", "team_c_areas", "unclaimed_areas"]
+        excluded_container = f"{team_name.lower().replace(' ', '_')}_areas"
+        target_containers = [c for c in all_containers if c != excluded_container]
+        area_options = [
+            area.name 
+            for c_name in target_containers 
+            for area in core_components[c_name].items
+        ]
+        area_options = sorted(area_options, key=lambda x: int(re.search(r'\d+', x).group()))
+        
+        area_name = st.selectbox(
+            "Select your current area:",
+            options=area_options
+        )
+
+    if team_name and challenge_name and area_name:
+        st.write(f"{team_name} @ {area_name}")
+        with st.container(border=True):
+            challenge_card = core_components["global_challenges"].get_item_by_name(
+                challenge_name
+            )
+            st.subheader(challenge_card.name)
+            st.write(f"{challenge_card.description}")
+            st.write(f"{challenge_card.duration / 60} minutes.")
+        if st.button("Submit"):
+            start_challenge(core_components, team_name, challenge_name, area_name)
+            

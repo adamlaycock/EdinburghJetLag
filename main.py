@@ -37,7 +37,9 @@ with tab2:
 with tab3:
     build_global_challenges(core_comps)
 
-    build_start_challenge(core_comps)
+    st.header("Start a Challenge:")
+    if st.button("Start a Challenge"):
+        build_start_challenge(core_comps)
 
 with tab4:
     team_name = st.selectbox(
