@@ -10,6 +10,8 @@ from container_management import Container, ChallengeCard
 from shapely.geometry import Point
 import time
 import re
+import plotly.express as px
+import matplotlib.pyplot as plt
 
 CONN = st.connection("gsheets", type=GSheetsConnection)
 
@@ -139,9 +141,10 @@ def build_game_map(core_components) -> None:
     m.options["maxBounds"] = [[miny, minx], [maxy, maxx]]
     m.options["maxBoundsViscosity"] = 1
     m.options["zoomSnap"] = 0.75
-    m.options["minZoom"] = 12.5
+    m.options["minZoom"] = 11.5
 
-    st_folium(m, width=700, height=500, returned_objects=[])
+    st.header("Map:")
+    st_folium(m, width="stretch", height=500, returned_objects=[])
 
 @st.fragment(run_every="1s") 
 def build_global_challenges(core_components) -> None:
@@ -348,4 +351,58 @@ def build_start_challenge(core_components: Dict[str, Any]) -> None:
             st.write(f"{challenge_card.duration / 60} minutes.")
         if st.button("Submit"):
             start_challenge(core_components, team_name, challenge_name, area_name)
-            
+
+def build_scoreboard(scores: pd.DataFrame) -> None:
+
+    total_score = scores["score"].sum()
+    scores["score_percent"] = (scores["score"] / total_score) * 100
+    scores["row"] = "Score"
+    scores["score_label"] = scores["score"].map(lambda x: f"{x:.0f} pts")
+
+    color_map = {
+        "Team A": "#FF0000",
+        "Team B": "#FFFF00",
+        "Team C": "#0000FF",
+    }
+
+    fig = px.bar(
+        scores,
+        x="score_percent",
+        y="row",
+        color="control",
+        orientation="h",
+        text="score_label",
+        color_discrete_map=color_map,
+    )
+
+    fig.update_layout(
+        barmode="stack",
+        showlegend=False,
+        bargap=0,
+        xaxis=dict(
+            visible=False,
+            range=[0, 100],
+        ),
+        yaxis=dict(
+            visible=False,
+            range=[-0.1, 0.1],
+        ),
+        height=100,
+        margin=dict(l=0, r=0, t=0, b=0),
+        hovermode=False,
+        font=dict(size=18)
+    )
+
+    fig.update_traces(
+        marker_line_width=0,
+        width=0.3,
+        textposition="inside",
+        insidetextanchor="middle",
+    )
+
+    st.header("Scoreboard:")
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        config={"displayModeBar": False},
+    )

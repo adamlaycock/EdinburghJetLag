@@ -7,6 +7,8 @@ from shapely.geometry import Point
 from streamlit_geolocation import streamlit_geolocation
 from typing import Optional
 import requests
+import networkx as nx
+import numpy as np
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -262,4 +264,59 @@ def start_challenge(
                     )
                     save_containers(core_components)
                     st.rerun()
-                    
+
+def count_adjacent_zones(gdf, tolerance=1.0) -> int:
+    projected = gdf.to_crs("EPSG:27700")
+
+    G = nx.Graph()
+    G.add_nodes_from(projected.index)
+
+    for i, geom in projected.geometry.items():
+        for j in projected.index:
+            if i < j:
+                other = projected.loc[j, "geometry"]
+
+                if geom.distance(other) <= tolerance:
+                    G.add_edge(i, j)
+
+    return max(
+        len(component)
+        for component in nx.connected_components(G)
+    )
+
+
+def calculate_scores(core_components: Dict[str, Container]) -> pd.DataFrame:
+    containers = {
+        "Team A": core_components["team_a_areas"],
+        "Team B": core_components["team_b_areas"],
+        "Team C": core_components["team_c_areas"],
+        "Unclaimed": core_components["unclaimed_areas"],
+    }
+    dfs = [
+        pd.DataFrame({
+            "name": [item.name for item in container.items],
+            "area": [item.area for item in container.items],
+            "distance": [item.distance for item in container.items],
+            "geometry": [item.geometry for item in container.items],
+            "is_prot": [item.is_prot for item in container.items],
+            "control": control,
+        })
+        for control, container in containers.items()
+    ]
+    full_gdf = gpd.GeoDataFrame(
+        pd.concat(dfs, ignore_index=True),
+        geometry="geometry",
+        crs="EPSG:4326",
+    )
+    full_gdf = full_gdf[full_gdf["control"] != "Unclaimed"]
+
+    adjacency_df = (
+        full_gdf.groupby("control")
+        .apply(count_adjacent_zones, include_groups=False)
+        .reset_index(name="number")
+    )
+    score_df = full_gdf.groupby("control")[["area", "distance"]].sum().reset_index()
+    score_df = score_df.merge(adjacency_df, how="inner", on="control")
+    score_df["score"] = (score_df["area"] + score_df["distance"]) * score_df["number"]
+
+    return score_df[["control", "score"]]

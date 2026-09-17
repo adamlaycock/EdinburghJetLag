@@ -32,6 +32,8 @@ with tab1:
             save_containers(core_comps)
 
 with tab2:
+    build_scoreboard(calculate_scores(core_comps))
+
     build_game_map(core_comps)
 
     zone, accuracy = get_current_area()
