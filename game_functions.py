@@ -156,18 +156,18 @@ def get_current_area() -> Optional[tuple[str, float]]:
 
 def initialise_decks(mode: str) -> None:
     challenge_items = [
-        ChallengeCard("challenge 1", "challenge 1 desc", "challenge", 3600),
-        ChallengeCard("challenge 2", "challenge 2 desc", "challenge", 3600),
-        ChallengeCard("challenge 3", "challenge 3 desc", "challenge", 3600),
-        ChallengeCard("challenge 4", "challenge 4 desc", "challenge", 3600),
-        ChallengeCard("challenge 5", "challenge 5 desc", "challenge", 3600),
-        ChallengeCard("challenge 6", "challenge 6 desc", "challenge", 3600),
-        ChallengeCard("challenge 7", "challenge 7 desc", "challenge", 3600),
-        ChallengeCard("challenge 8", "challenge 8 desc", "challenge", 3600),
-        ChallengeCard("challenge 9", "challenge 9 desc", "challenge", 3600),
-        ChallengeCard("challenge 10", "challenge 10 desc", "challenge", 3600),
-        ChallengeCard("challenge 11", "challenge 11 desc", "challenge", 3600),
-        ChallengeCard("challenge 12", "challenge 12 desc", "challenge", 3600),
+        ChallengeCard("challenge 1", "challenge 1 desc", "challenge"),
+        ChallengeCard("challenge 2", "challenge 2 desc", "challenge"),
+        ChallengeCard("challenge 3", "challenge 3 desc", "challenge"),
+        ChallengeCard("challenge 4", "challenge 4 desc", "challenge"),
+        ChallengeCard("challenge 5", "challenge 5 desc", "challenge"),
+        ChallengeCard("challenge 6", "challenge 6 desc", "challenge"),
+        ChallengeCard("challenge 7", "challenge 7 desc", "challenge"),
+        ChallengeCard("challenge 8", "challenge 8 desc", "challenge"),
+        ChallengeCard("challenge 9", "challenge 9 desc", "challenge"),
+        ChallengeCard("challenge 10", "challenge 10 desc", "challenge"),
+        ChallengeCard("challenge 11", "challenge 11 desc", "challenge"),
+        ChallengeCard("challenge 12", "challenge 12 desc", "challenge"),
     ]
 
     reward_df = pd.read_csv(

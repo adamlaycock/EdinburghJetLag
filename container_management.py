@@ -22,9 +22,6 @@ def item_from_dict(data: Union[Dict[str, Any], Any]) -> Any:
             name=data["name"],
             description=data["description"],
             card_type=data["card_type"],
-            duration=data["duration"],
-            challenge_start=data.get("challenge_start"),
-            challenge_end=data.get("challenge_end"),
             challenge_area=data.get("challenge_area"),
             area_og_container=data.get("area_og_container")
         )
@@ -185,73 +182,26 @@ class ChallengeCard(Card):
         name: str, 
         description: str, 
         card_type: str, 
-        duration: int,
-        challenge_start: Optional[float] = None,
-        challenge_end: Optional[float] = None,
         challenge_area: Optional[str] = None,
         area_og_container: Optional[str] = None
     ):
         super().__init__(name, description, card_type)
-        self.duration = duration
-        self.challenge_start = challenge_start
         self.challenge_area = challenge_area
         self.area_og_container = area_og_container
 
-        if challenge_end is not None:
-            self.challenge_end = challenge_end
-        elif challenge_start is not None:
-            self.challenge_end = challenge_start + duration
-        else:
-            self.challenge_end = None
-
     def to_dict(self) -> Dict[str, Any]:
         data = super().to_dict()
-        data["duration"] = self.duration
-        data["challenge_start"] = self.challenge_start
-        data["challenge_end"] = self.challenge_end
         data["challenge_area"] = self.challenge_area
         data["area_og_container"] = self.area_og_container
         return data
 
     def start_challenge(self, area_name, container_name) -> None:
-        self.challenge_start = time.time()
-        self.challenge_end = self.challenge_start + self.duration
         self.challenge_area = area_name
         self.area_og_container = container_name
 
     def reset_challenge(self) -> None:
-        self.challenge_start = None
-        self.challenge_end = None
         self.challenge_area = None
         self.area_og_container = None
-
-    @property
-    def is_expired(self) -> bool:
-        return (
-            self.challenge_end is not None
-            and time.time() >= self.challenge_end
-        )
-
-    @property
-    def is_active(self) -> bool:
-        return (
-            self.challenge_start is not None
-            and self.challenge_end is not None
-            and self.challenge_start <= time.time() < self.challenge_end
-        )
-
-    @property
-    def time_remaining(self) -> Optional[timedelta]:
-        if self.challenge_end is None:
-            return None
-
-        remaining_seconds = self.challenge_end - time.time()
-
-        if remaining_seconds <= 0:
-            return timedelta(0)
-
-        return timedelta(seconds=remaining_seconds)
-
 
 class RewardCard(Card):
     def __init__(

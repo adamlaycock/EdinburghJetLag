@@ -11,7 +11,6 @@ from shapely.geometry import Point
 import time
 import re
 import plotly.express as px
-import matplotlib.pyplot as plt
 
 CONN = st.connection("gsheets", type=GSheetsConnection)
 
@@ -159,7 +158,6 @@ def build_global_challenges(core_components) -> None:
             with st.container(border=True):
                 st.subheader(challenge_card.name)
                 st.write(f"{challenge_card.description}")
-                st.write(f"This challenge must be completed within **{int(challenge_card.duration / 60)} minutes**.")
 
 def build_team_hand(core_components: Dict[str, Container], team_name: str):
     team_name = team_name.lower().replace(" ", "_")
@@ -209,23 +207,10 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
 
     if team_active.items:
         for challenge_card in team_active.items:
-            if challenge_card.is_expired:
-                core_components["challenged_areas"].transfer_item_by_name(
-                    challenge_card.challenge_area,
-                    core_components[f"{challenge_card.area_og_container}"]
-                )
-                challenge_card.reset_challenge()
-                team_active.transfer_item(
-                        challenge_card, 
-                        core_components["global_challenges"]
-                    )
-                save_containers(core_components)
-
             with st.container(border=True):
                 st.subheader(challenge_card.name)
                 st.write(f"{challenge_card.description}")
                 st.write(f"Challenging: {challenge_card.challenge_area}")
-                build_time_remaining(challenge_card)
                 if st.button("Complete Challenge"):
                     core_components["challenged_areas"].transfer_item_by_name(
                         challenge_card.challenge_area,
@@ -244,20 +229,17 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
                     )
                     save_containers(core_components)
                     st.rerun()
-
-def build_time_remaining(challenge_card) -> None:
-    time_remaining = challenge_card.time_remaining
-
-    if time_remaining is None:
-        return
-
-    total_seconds = int(time_remaining.total_seconds())
-
-    st.write(
-        f"Time Remaining: **"
-        f"{total_seconds // 60:02d}:"
-        f"{total_seconds % 60:02d}**"
-    )
+                if st.button("Abandon Challenge"):
+                    core_components["challenged_areas"].transfer_item_by_name(
+                        challenge_card.challenge_area,
+                        core_components[f"{challenge_card.area_og_container}"]
+                    )
+                    challenge_card.reset_challenge()
+                    team_active.transfer_item(
+                            challenge_card, 
+                            core_components["global_challenges"]
+                    )
+                    save_containers(core_components)
 
 def build_team_curses(
     core_components: Dict[str, Container], 
@@ -348,7 +330,6 @@ def build_start_challenge(core_components: Dict[str, Any]) -> None:
             )
             st.subheader(challenge_card.name)
             st.write(f"{challenge_card.description}")
-            st.write(f"{challenge_card.duration / 60} minutes.")
         if st.button("Submit"):
             start_challenge(core_components, team_name, challenge_name, area_name)
 
@@ -403,6 +384,6 @@ def build_scoreboard(scores: pd.DataFrame) -> None:
     st.header("Scoreboard:")
     st.plotly_chart(
         fig,
-        use_container_width=True,
+        width="stretch",
         config={"displayModeBar": False},
     )

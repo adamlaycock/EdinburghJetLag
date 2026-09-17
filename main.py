@@ -32,7 +32,8 @@ with tab1:
             save_containers(core_comps)
 
 with tab2:
-    build_scoreboard(calculate_scores(core_comps))
+    if len(core_comps["unclaimed_areas"].items) + len(core_comps["challenged_areas"].items)!= 15:
+        build_scoreboard(calculate_scores(core_comps))
 
     build_game_map(core_comps)
 
