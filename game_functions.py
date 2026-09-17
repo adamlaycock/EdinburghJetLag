@@ -130,31 +130,27 @@ def initialise_core_components(
         for name, type_, max_items in specs
     }
 
-def get_current_coords() -> Point | None:
+def get_current_area() -> Optional[tuple[str, float]]:
+    st.header("Get Current Zone:")
     geolocation = streamlit_geolocation()
 
     lat = geolocation.get("latitude")
     lon = geolocation.get("longitude")
+    accuracy = geolocation.get("accuracy")
 
     if lat is None or lon is None:
-        return None
+        return None, None
     
-    return Point(lon, lat)
+    gdf = gpd.read_file(
+        "MapData/Board/GameBoard.geojson"
+    ).to_crs("EPSG:4326")
 
-def get_current_area(position: Point) -> str | None:
-    if position:
-        gdf = gpd.read_file(
-            "MapData/Board/GameBoard.geojson"
-        ).to_crs("EPSG:4326")
+    matching_polygon = gdf[gdf.geometry.covers(Point(lon, lat))]
 
-        matching_polygon = gdf[gdf.geometry.covers(position)]
+    if matching_polygon.empty:
+        return None, None
 
-        if matching_polygon.empty:
-            return None
-
-        return matching_polygon.iloc[0]["name"]
-    return None
-
+    return (matching_polygon.iloc[0]["name"], accuracy)
 
 def initialise_decks(mode: str) -> None:
     challenge_items = [

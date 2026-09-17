@@ -34,6 +34,11 @@ with tab1:
 with tab2:
     build_game_map(core_comps)
 
+    zone, accuracy = get_current_area()
+    if zone:
+        st.write(f"You are currently within **{zone}**.")
+        st.write(f"Accurate to **{accuracy}m**.")
+
 with tab3:
     build_global_challenges(core_comps)
 
