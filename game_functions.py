@@ -204,33 +204,6 @@ def find_area_by_name(
 
     return None
 
-def send_discord_notification(
-    sender_key: str,
-    recipient_key: str,
-    card: ChallengeCard
-) -> None:
-
-    team_id_mapping = {
-        "team_a": "1545068980996145182",
-        "team_b": "1545069081256788018",
-        "team_c": "1545069296064004166"
-    }
-
-    sender_role_id = team_id_mapping.get(sender_key, "")
-    recipient_role_id = team_id_mapping.get(recipient_key, "")
-
-    processed_msg = card.msg \
-        .replace("--TEAM_1_ID--", sender_role_id) \
-        .replace("--TEAM_2_ID--", recipient_role_id) \
-        .replace("--CARD_NAME--", card.name)
-
-    payload = {
-        "content": processed_msg,
-        "username": "EdinburghJetLag"
-    }
-    
-    requests.post(st.secrets["discord_webhook"], json=payload)
-
 def start_challenge(
     core_components: Dict[str, Container],
     team_name: str,
@@ -263,7 +236,19 @@ def start_challenge(
                         core_components["challenged_areas"]
                     )
                     save_containers(core_components)
+                    msg = f"""
+                        {{{team_name}}} has started **{challenge_name}** in the **{challenge_area}** zone!
+                    """
+                    send_discord_notification(msg)
                     st.rerun()
+                else:
+                    st.error("This challenge is no longer available!")
+            else:
+                st.error("Your team already has an active challenge!")
+        else:
+            st.error("This area is currently protected!")
+    else:
+        st.error("This area is already being challenged!")
 
 def count_adjacent_zones(gdf, tolerance=1.0) -> int:
     projected = gdf.to_crs("EPSG:27700")
@@ -320,3 +305,20 @@ def calculate_scores(core_components: Dict[str, Container]) -> pd.DataFrame:
     score_df["score"] = (score_df["area"] + score_df["distance"]) * score_df["number"]
 
     return score_df[["control", "score"]]
+
+def send_discord_notification(
+    msg: str
+) -> None:
+
+    TEAM_MAPPING = {
+        "team_a": "<@&1545068980996145182>",
+        "team_b": "<@&1545069081256788018>",
+        "team_c": "<@&1545069296064004166>"
+    }
+    msg = msg.format(**TEAM_MAPPING)
+    payload = {
+        "content": msg,
+        "username": "EdinburghJetLag"
+    }
+
+    requests.post(st.secrets["discord_webhook"], json=payload)

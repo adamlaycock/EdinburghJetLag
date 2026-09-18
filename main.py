@@ -39,7 +39,7 @@ with tab2:
 
     zone, accuracy = get_current_area()
     if zone:
-        st.write(f"You are currently within **{zone}**.")
+        st.write(f"You are currently within the **{zone}** zone.")
         st.write(f"Accurate to **{accuracy}m**.")
 
 with tab3:

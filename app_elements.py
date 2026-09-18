@@ -80,7 +80,6 @@ def build_game_map(core_components) -> None:
         "Team C": core_components["team_c_areas"],
         "Unclaimed": core_components["unclaimed_areas"],
     }
-
     dfs = [
         pd.DataFrame({
             "name": [item.name for item in container.items],
@@ -90,20 +89,18 @@ def build_game_map(core_components) -> None:
         })
         for control, container in containers.items()
     ]
-
     full_gdf = gpd.GeoDataFrame(
         pd.concat(dfs, ignore_index=True),
         geometry="geometry",
         crs="EPSG:4326",
     )
     full_gdf["is_prot"] = full_gdf["is_prot"].astype(bool)
-
     full_gdf["control"] = pd.Categorical(
         full_gdf["control"],
         categories=containers.keys(),
     )
-    colors = ["#FF0000", "#FFFF00", "#0000FF", "#808080"]
 
+    colors = ["#FF0000", "#FFFF00", "#0000FF", "#808080"]
     def style_status(feature):
         if feature["properties"]["is_prot"]:
             return {
@@ -171,21 +168,19 @@ def build_team_hand(core_components: Dict[str, Container], team_name: str):
         ):
             with st.container(border=True):
                 st.subheader(reward_card.name)
-                st.write(f"{reward_card.reward_type}")
                 st.write(f"{reward_card.description}")
 
                 if st.button("Use Card", key=f"use_{card_num}"):
                     if reward_card.reward_type == "powerup":
-                        send_discord_notification(
-                            team_name,
-                            None,
-                            reward_card
-                        )
                         team_hand.transfer_item(
                             reward_card, 
                             core_components["discard_deck"]
                         )
                         save_containers(core_components)
+                        msg = f"""
+                            {{{team_name}}} has used **{reward_card.name}**!
+                        """
+                        send_discord_notification(msg)
                         st.rerun()
                     else:
                         choose_target_team(reward_card, team_name, core_components)
@@ -197,6 +192,10 @@ def build_team_hand(core_components: Dict[str, Container], team_name: str):
                     )
                     save_containers(core_components)
                     st.rerun()
+    else:
+        with st.container(border=True):
+            st.write("Your hand is currently empty.")
+            st.write("Complete challenges to gain new reward cards.")
 
 @st.fragment(run_every="1s")
 def build_team_active(core_components: Dict[str, Container], team_name:str):
@@ -212,24 +211,40 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
                 st.write(f"{challenge_card.description}")
                 st.write(f"Challenging: {challenge_card.challenge_area}")
                 if st.button("Complete Challenge"):
-                    core_components["challenged_areas"].transfer_item_by_name(
-                        challenge_card.challenge_area,
-                        team_areas
-                    )
-                    challenge_card.reset_challenge()
-                    team_active.transfer_item(
-                        challenge_card, 
-                        core_components["discard_deck"]
-                    )
-                    core_components["reward_deck"].transfer_random_item(
-                        core_components[f"{team_name}_hand"]
-                    )
-                    core_components["challenge_deck"].transfer_random_item(
-                        core_components["global_challenges"]
-                    )
-                    save_containers(core_components)
-                    st.rerun()
+                    if core_components[f"{team_name}_hand"].has_space():
+                        msg = f"""
+                            {{{team_name}}} has completed **{challenge_card.name}**, capturing the **{challenge_card.challenge_area}** zone!
+                        """
+                        send_discord_notification(msg)
+                        area = core_components["challenged_areas"].get_item_by_name(
+                            challenge_card.challenge_area
+                        )
+                        area.start_protection(900)
+                        core_components["challenged_areas"].transfer_item(
+                            area,
+                            team_areas
+                        )
+                        challenge_card.reset_challenge()
+                        team_active.transfer_item(
+                            challenge_card, 
+                            core_components["discard_deck"]
+                        )
+                        core_components["challenge_deck"].transfer_random_item(
+                            core_components["global_challenges"]
+                        )
+                        core_components["reward_deck"].transfer_random_item(
+                            core_components[f"{team_name}_hand"]
+                        )
+                        save_containers(core_components)
+                        st.rerun()
+                    else:
+                        st.error("You must discard a card from your hand before completing this challenge.")
+                        time.sleep(5)
                 if st.button("Abandon Challenge"):
+                    msg = f"""
+                        {{{team_name}}} has abandoned **{challenge_card.name}**, failing to capture the **{challenge_card.challenge_area}** zone!
+                    """
+                    send_discord_notification(msg)
                     core_components["challenged_areas"].transfer_item_by_name(
                         challenge_card.challenge_area,
                         core_components[f"{challenge_card.area_og_container}"]
@@ -240,6 +255,10 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
                             core_components["global_challenges"]
                     )
                     save_containers(core_components)
+    else:
+        with st.container(border=True):
+            st.write("Your team has no active challenge.")
+            st.write("Challenges can be started on the 'Global Challenges' panel.")
 
 def build_team_curses(
     core_components: Dict[str, Container], 
@@ -261,8 +280,16 @@ def build_team_curses(
                             curse_card,
                             core_components["discard_deck"]
                         )
+                        msg = f"""
+                            {{{team_name}}} has completed **{curse_card.name}!**
+                        """
+                        send_discord_notification(msg)
                         save_containers(core_components)
                         st.rerun()
+    else:
+        with st.container(border=True):
+            st.write("Your team has no active curses.")
+            st.write("Curses may be cast upon your team throughout the course of the game.")
 
 
 @st.dialog("Choose Target Team")
@@ -278,15 +305,23 @@ def choose_target_team(reward_card: Any, team_name: str, core_components: Dict[s
     if st.button("Submit"):
         if target_team:
             recipient = target_team.lower().replace(" ", "_")
-            send_discord_notification(team_name, recipient, reward_card)
 
             team_hand = core_components[f"{team_name}_hand"]
-            team_hand.transfer_item(
-                reward_card,
-                core_components[f"{recipient}_curses"]
-            )
-            save_containers(core_components)
-            st.rerun()
+            if core_components[f"{recipient}_curses"].has_space():
+                team_hand.transfer_item(
+                    reward_card,
+                    core_components[f"{recipient}_curses"]
+                )
+                save_containers(core_components)
+                msg = f"""
+                    {{{team_name}}} has cast **{reward_card.name}** on {{{recipient}}}!
+                """
+                send_discord_notification(msg)
+                st.rerun()
+            else:
+                st.error("The target team has already reached the maximum number of curses.")
+        else:
+            st.error("Please select a team.")
 
 from typing import Dict, Any
 
