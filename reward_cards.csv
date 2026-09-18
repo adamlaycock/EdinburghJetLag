@@ -33,3 +33,5 @@ name,description,card_type,reward_type
 "The Curse of Levitation","Choose an opposing team. The chosen team must nominate a team member who cannot touch the ground for 5 minutes.","reward","curse"
 "Switcheroo (1)","Choose an opposing team. The members of the chosen team must use only their non-dominant hand for 10 minutes.","reward","curse"
 "Switcheroo (2)","Choose an opposing team. The members of the chosen team must use only their non-dominant hand for 10 minutes.","reward","curse"
+"Shuffle Challenges (1)","Replaces a random number of the available challenges with new challenges from the challenge deck.","reward","powerup"
+"Shuffle Challenges (2)","Replaces a random number of the available challenges with new challenges from the challenge deck.","reward","powerup"

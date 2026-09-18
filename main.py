@@ -4,16 +4,6 @@ from game_functions import *
 
 teams_data = get_teams_data()
 core_comps = load_containers()
-
-if st.button("add cards"):
-    core_comps["challenge_deck"].items = initialise_decks("challenge")
-    core_comps["reward_deck"].items = initialise_decks("reward")
-    save_containers(core_comps)
-
-if st.button("move_challenges"):
-    for i in range(5):
-        core_comps["challenge_deck"].transfer_random_item(core_comps["global_challenges"])
-    save_containers(core_comps)
  
 tab1, tab2, tab3, tab4 = st.tabs(["Players", "Game Map", "Global Challenges", "Team Hands"])
 
@@ -29,6 +19,10 @@ with tab1:
             core_comps = initialise_core_components(
                 a_players, b_players, c_players
             )
+            core_comps["challenge_deck"].items = initialise_decks("challenge")
+            core_comps["reward_deck"].items = initialise_decks("reward")
+            for i in range(5):
+                core_comps["challenge_deck"].transfer_random_item(core_comps["global_challenges"])
             save_containers(core_comps)
 
 with tab2:

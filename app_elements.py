@@ -11,6 +11,7 @@ from shapely.geometry import Point
 import time
 import re
 import plotly.express as px
+import random
 
 CONN = st.connection("gsheets", type=GSheetsConnection)
 
@@ -172,6 +173,15 @@ def build_team_hand(core_components: Dict[str, Container], team_name: str):
 
                 if st.button("Use Card", key=f"use_{card_num}"):
                     if reward_card.reward_type == "powerup":
+                        if "Shuffle Challenges" in reward_card.name:
+                            num_cards = random.randint(2, len(core_components["global_challenges"].items))
+                            for i in range(num_cards):
+                                core_components["global_challenges"].transfer_random_item(
+                                    core_components["challenge_deck"]
+                                )
+                                core_components["challenge_deck"].transfer_random_item(
+                                    core_components["global_challenges"]
+                                )
                         team_hand.transfer_item(
                             reward_card, 
                             core_components["discard_deck"]
