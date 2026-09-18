@@ -155,23 +155,18 @@ def get_current_area() -> Optional[tuple[str, float]]:
     return (matching_polygon.iloc[0]["name"], accuracy)
 
 def initialise_decks(mode: str) -> None:
+    challenge_df = pd.read_csv(
+        "challenge_cards.csv",
+        quotechar='"'
+    )
     challenge_items = [
-        ChallengeCard("challenge 1", "challenge 1 desc", "challenge"),
-        ChallengeCard("challenge 2", "challenge 2 desc", "challenge"),
-        ChallengeCard("challenge 3", "challenge 3 desc", "challenge"),
-        ChallengeCard("challenge 4", "challenge 4 desc", "challenge"),
-        ChallengeCard("challenge 5", "challenge 5 desc", "challenge"),
-        ChallengeCard("challenge 6", "challenge 6 desc", "challenge"),
-        ChallengeCard("challenge 7", "challenge 7 desc", "challenge"),
-        ChallengeCard("challenge 8", "challenge 8 desc", "challenge"),
-        ChallengeCard("challenge 9", "challenge 9 desc", "challenge"),
-        ChallengeCard("challenge 10", "challenge 10 desc", "challenge"),
-        ChallengeCard("challenge 11", "challenge 11 desc", "challenge"),
-        ChallengeCard("challenge 12", "challenge 12 desc", "challenge"),
+        ChallengeCard(**row) 
+        for row in challenge_df.to_dict(orient="records")
     ]
 
     reward_df = pd.read_csv(
-        "reward_cards.csv"
+        "reward_cards.csv",
+        quotechar='"'
     )
     reward_items = [
         RewardCard(**row) 
@@ -316,8 +311,18 @@ def send_discord_notification(
         "team_c": "<@&1545069296064004166>"
     }
     msg = msg.format(**TEAM_MAPPING)
+
+    embed = {
+        "title": "Game Update!",
+        "description": msg,
+        "color": 0xFFFFFF,
+        "footer": {
+            "text": "EdinburghJetLag • Alerts"
+        }
+    }
+
     payload = {
-        "content": msg,
+        "embeds": [embed],
         "username": "EdinburghJetLag"
     }
 

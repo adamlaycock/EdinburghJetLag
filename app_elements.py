@@ -105,8 +105,8 @@ def build_game_map(core_components) -> None:
         if feature["properties"]["is_prot"]:
             return {
                 "color": "black",
-                "weight": 4,
-                "fillOpacity": 0.75,
+                "weight": 3,
+                "fillOpacity": 0.5,
             }
 
         return {
@@ -238,7 +238,7 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
                         save_containers(core_components)
                         st.rerun()
                     else:
-                        st.error("You must discard a card from your hand before completing this challenge.")
+                        st.error("You must use or discard a card from your hand before completing this challenge.")
                         time.sleep(5)
                 if st.button("Abandon Challenge"):
                     msg = f"""
@@ -281,7 +281,7 @@ def build_team_curses(
                             core_components["discard_deck"]
                         )
                         msg = f"""
-                            {{{team_name}}} has completed **{curse_card.name}!**
+                            {{{team_name}}} has cleared **{curse_card.name}!**
                         """
                         send_discord_notification(msg)
                         save_containers(core_components)
