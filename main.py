@@ -23,6 +23,7 @@ with tab1:
             core_comps["reward_deck"].items = initialise_decks("reward")
             for i in range(5):
                 core_comps["challenge_deck"].transfer_random_item(core_comps["global_challenges"])
+            update_cooldowns(["team_a", "team_b", "team_c"], 0)
             save_containers(core_comps)
 
 with tab2:

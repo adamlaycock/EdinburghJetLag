@@ -246,6 +246,7 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
                             core_components[f"{team_name}_hand"]
                         )
                         save_containers(core_components)
+                        update_cooldowns([team_name], 600)
                         st.rerun()
                     else:
                         st.error("You must use or discard a card from your hand before completing this challenge.")
@@ -265,6 +266,8 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
                             core_components["global_challenges"]
                     )
                     save_containers(core_components)
+                    update_cooldowns([team_name], 600)
+                    st.rerun()
     else:
         with st.container(border=True):
             st.write("Your team has no active challenge.")

@@ -61,6 +61,31 @@ def load_containers() -> Dict[str, Container]:
         for _, row in df.iterrows()
     }
 
+@st.cache_data(ttl=30)
+def get_cooldowns() -> pd.DataFrame:
+    df = conn.read(worksheet="cooldown_mgmt", ttl=0)
+    df = df.dropna(subset=["team_key", "timestamp"])
+
+    return df
+
+def update_cooldowns(team_keys: List[str], duration: int) -> None:
+    df = conn.read(worksheet="cooldown_mgmt", ttl=0)
+
+    for team_key in team_keys:
+        df = df[df["team_key"] != team_key]
+
+        new_row = pd.DataFrame({
+            "team_key": [team_key],
+            "timestamp": [time.time() + duration]
+        })
+
+        df = pd.concat(
+            [df, new_row], ignore_index=True
+        )
+
+    conn.update(worksheet="cooldown_mgmt", data=df)
+
+
 def initialise_core_components(
     team_a_players: List[str],
     team_b_players: List[str],
@@ -209,41 +234,45 @@ def start_challenge(
     active_container = core_components[f"{team_name}_active"]
     areas_container = core_components[f"{team_name}_areas"]
 
-    if core_components["challenged_areas"].get_item_by_name(challenge_area) is None:
-        area, original_container = find_area_by_name(
-            challenge_area, 
-            core_comps=core_components, 
-            exclusion=areas_container.name
-        )
-        if not area.is_prot:
-            if active_container.has_space():
-                challenge_card = core_components["global_challenges"].get_item_by_name(
-                    challenge_name
-                )
-                if challenge_card is not None:
-                    challenge_card.start_challenge(challenge_area, original_container.name)
-                    core_components["global_challenges"].transfer_item(
-                        challenge_card,
-                        active_container
+    cooldowns = get_cooldowns()
+    if cooldowns[cooldowns["team_key"]==team_name]["timestamp"].iloc[0] <= time.time():
+        if core_components["challenged_areas"].get_item_by_name(challenge_area) is None:
+            area, original_container = find_area_by_name(
+                challenge_area, 
+                core_comps=core_components, 
+                exclusion=areas_container.name
+            )
+            if not area.is_prot:
+                if active_container.has_space():
+                    challenge_card = core_components["global_challenges"].get_item_by_name(
+                        challenge_name
                     )
-                    original_container.transfer_item(
-                        area,
-                        core_components["challenged_areas"]
-                    )
-                    save_containers(core_components)
-                    msg = f"""
-                        {{{team_name}}} has started **{challenge_name}** in the **{challenge_area}** zone!
-                    """
-                    send_discord_notification(msg)
-                    st.rerun()
+                    if challenge_card is not None:
+                        challenge_card.start_challenge(challenge_area, original_container.name)
+                        core_components["global_challenges"].transfer_item(
+                            challenge_card,
+                            active_container
+                        )
+                        original_container.transfer_item(
+                            area,
+                            core_components["challenged_areas"]
+                        )
+                        save_containers(core_components)
+                        msg = f"""
+                            {{{team_name}}} has started **{challenge_name}** in the **{challenge_area}** zone!
+                        """
+                        send_discord_notification(msg)
+                        st.rerun()
+                    else:
+                        st.error("This challenge is no longer available!")
                 else:
-                    st.error("This challenge is no longer available!")
+                    st.error("Your team already has an active challenge!")
             else:
-                st.error("Your team already has an active challenge!")
+                st.error("This area is currently protected!")
         else:
-            st.error("This area is currently protected!")
+            st.error("This area is already being challenged!")
     else:
-        st.error("This area is already being challenged!")
+        st.error("Your team's challenge cooldown has not yet expired!")
 
 def count_adjacent_zones(gdf, tolerance=1.0) -> int:
     projected = gdf.to_crs("EPSG:27700")
