@@ -4,7 +4,10 @@ from game_functions import *
 
 teams_data = get_teams_data()
 core_comps = load_containers()
- 
+
+if "authenticated_team" not in st.session_state:
+    st.session_state["authenticated_team"] = None
+
 tab1, tab2, tab3, tab4 = st.tabs(["Players", "Game Map", "Global Challenges", "Team Hands"])
 
 with tab1:
@@ -51,6 +54,21 @@ with tab4:
         index=0
     )
     if team_name:
+        if st.session_state["authenticated_team"] != team_name:
+            pwd = st.text_input("Enter your team's password:", type="password")
+
+            stored_pwd_key = f"{team_name.lower().replace(' ', '_')}_pwd"
+            correct_pwd = st.secrets.get(stored_pwd_key)
+
+            if pwd:
+                if correct_pwd and pwd == correct_pwd:
+                    st.session_state["authenticated_team"] = team_name
+                    st.rerun()
+                else:
+                    st.error("Incorrect password!")
+
+    if st.session_state["authenticated_team"] == team_name and team_name != None:
+
         st.header("Active Challenge:")
         build_team_active(core_comps, team_name)
 
