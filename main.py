@@ -1,6 +1,9 @@
 from app_elements import *
 from container_management import *
 from game_functions import *
+from streamlit_autorefresh import st_autorefresh
+
+st_autorefresh(interval=5000, key="game_refresh")
 
 teams_data = get_teams_data()
 core_comps = load_containers()

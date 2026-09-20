@@ -51,7 +51,7 @@ def save_containers(containers: dict[str, Container]) -> None:
 
     load_containers.clear()
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=5)
 def load_containers() -> Dict[str, Container]:
     df = conn.read(worksheet="container_mgmt", ttl=0)
     df = df.dropna(subset=["container_key", "json"])

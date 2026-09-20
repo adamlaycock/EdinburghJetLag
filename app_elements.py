@@ -70,7 +70,7 @@ def build_team_players(team_data):
         players_by_team["Team C"]
     )
 
-@st.fragment(run_every="30s")
+@st.fragment(run_every="10s")
 def build_game_map(core_components) -> None:
     containers = {
         "Team A": core_components["team_a_areas"],
@@ -143,7 +143,7 @@ def build_game_map(core_components) -> None:
     st.header("Map:")
     st_folium(m, width="stretch", height=500, returned_objects=[])
 
-@st.fragment(run_every="1s") 
+@st.fragment(run_every="5s") 
 def build_global_challenges(core_components) -> None:
     global_challenges = core_components["global_challenges"]
 
@@ -207,7 +207,6 @@ def build_team_hand(core_components: Dict[str, Container], team_name: str):
             st.write("Your hand is currently empty.")
             st.write("Complete challenges to gain new reward cards.")
 
-@st.fragment(run_every="1s")
 def build_team_active(core_components: Dict[str, Container], team_name:str):
     team_name = team_name.lower().replace(" ", "_")
 
@@ -381,6 +380,7 @@ def build_start_challenge(core_components: Dict[str, Any]) -> None:
         if st.button("Submit"):
             start_challenge(core_components, team_name, challenge_name, area_name)
 
+@st.fragment(run_every="10s")
 def build_scoreboard(scores: pd.DataFrame) -> None:
     total_score = scores["score"].sum()
     scores["score_percent"] = (scores["score"] / total_score) * 100
