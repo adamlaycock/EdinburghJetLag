@@ -3,7 +3,6 @@ from container_management import *
 from game_functions import *
 
 teams_data = get_teams_data()
-core_comps = load_containers()
 
 if "authenticated_team" not in st.session_state:
     st.session_state["authenticated_team"] = None
@@ -68,10 +67,9 @@ with tab2:
             send_discord_notification("A new game has been started!")
 
 with tab3:
-    if len(core_comps["unclaimed_areas"].items) + len(core_comps["challenged_areas"].items)!= 15:
-        build_scoreboard(calculate_scores(core_comps))
+    build_scoreboard(calculate_scores())
 
-    build_game_map(core_comps)
+    build_game_map()
 
     zone, accuracy = get_current_area()
     if zone:
@@ -79,11 +77,11 @@ with tab3:
         st.write(f"Accurate to **{accuracy:.0f}m**.")
 
 with tab4:
-    build_global_challenges(core_comps)
+    build_global_challenges()
 
     st.header("Start a Challenge:")
     if st.button("Start a Challenge"):
-        build_start_challenge(core_comps)
+        build_start_challenge()
 
 with tab5:
     team_name = st.selectbox(
@@ -108,10 +106,10 @@ with tab5:
     if st.session_state["authenticated_team"] == team_name and team_name != None:
 
         st.header("Active Challenge:")
-        build_team_active(core_comps, team_name)
+        build_team_active(team_name)
 
         st.header("Active Curses:")
-        build_team_curses(core_comps, team_name)
+        build_team_curses(team_name)
 
         st.header("Available Cards:")
-        build_team_hand(core_comps, team_name)
+        build_team_hand(team_name)

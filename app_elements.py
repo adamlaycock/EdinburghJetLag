@@ -71,7 +71,9 @@ def build_team_players(team_data):
     )
 
 @st.fragment(run_every="10s")
-def build_game_map(core_components) -> None:
+def build_game_map() -> None:
+    core_components = load_containers()
+
     containers = {
         "Team A": core_components["team_a_areas"],
         "Team B": core_components["team_b_areas"],
@@ -143,8 +145,9 @@ def build_game_map(core_components) -> None:
     st.header("Map:")
     st_folium(m, width="stretch", height=500, returned_objects=[])
 
-@st.fragment(run_every="5s") 
-def build_global_challenges(core_components) -> None:
+@st.fragment(run_every="10s") 
+def build_global_challenges() -> None:
+    core_components = load_containers()
     global_challenges = core_components["global_challenges"]
 
     if global_challenges.items:
@@ -157,7 +160,9 @@ def build_global_challenges(core_components) -> None:
                 st.subheader(challenge_card.name)
                 st.write(f"{challenge_card.description}")
 
-def build_team_hand(core_components: Dict[str, Container], team_name: str):
+@st.fragment(run_every="10s")
+def build_team_hand(team_name: str):
+    core_components = load_containers()
     team_name = team_name.lower().replace(" ", "_")
 
     team_hand = core_components[f"{team_name}_hand"]
@@ -207,7 +212,9 @@ def build_team_hand(core_components: Dict[str, Container], team_name: str):
             st.write("Your hand is currently empty.")
             st.write("Complete challenges to gain new reward cards.")
 
-def build_team_active(core_components: Dict[str, Container], team_name:str):
+@st.fragment(run_every="10s")
+def build_team_active(team_name:str):
+    core_components = load_containers()
     team_name = team_name.lower().replace(" ", "_")
 
     team_active = core_components[f"{team_name}_active"]
@@ -272,10 +279,11 @@ def build_team_active(core_components: Dict[str, Container], team_name:str):
             st.write("Your team has no active challenge.")
             st.write("Challenges can be started on the 'Global Challenges' panel.")
 
+@st.fragment(run_every="10s")
 def build_team_curses(
-    core_components: Dict[str, Container], 
     team_name: str
 ):
+    core_components = load_containers()
     team_name = team_name.lower().replace(" ", "_")
     team_curses = core_components[f"{team_name}_curses"]
 
@@ -305,7 +313,8 @@ def build_team_curses(
 
 
 @st.dialog("Choose Target Team")
-def choose_target_team(reward_card: Any, team_name: str, core_components: Dict[str, Any]):
+def choose_target_team(reward_card: Any, team_name: str):
+    core_components = load_containers()
     st.write(f"Select a target team to apply **{reward_card.name}**:")
     
     target_team = st.selectbox(
@@ -338,7 +347,8 @@ def choose_target_team(reward_card: Any, team_name: str, core_components: Dict[s
 from typing import Dict, Any
 
 @st.dialog("Start a Challenge")
-def build_start_challenge(core_components: Dict[str, Any]) -> None:
+def build_start_challenge() -> None:
+    core_components = load_containers()
     team_name = st.selectbox(
         "Select a team:",
         options=[None, "Team A", "Team B", "Team C"],
@@ -382,55 +392,56 @@ def build_start_challenge(core_components: Dict[str, Any]) -> None:
 
 @st.fragment(run_every="10s")
 def build_scoreboard(scores: pd.DataFrame) -> None:
-    total_score = scores["score"].sum()
-    scores["score_percent"] = (scores["score"] / total_score) * 100
-    scores["row"] = "Score"
-    scores["score_label"] = scores["score"].map(lambda x: f"{x:.0f} pts")
+    if not scores.empty:
+        total_score = scores["score"].sum()
+        scores["score_percent"] = (scores["score"] / total_score) * 100
+        scores["row"] = "Score"
+        scores["score_label"] = scores["score"].map(lambda x: f"{x:.0f} pts")
 
-    color_map = {
-        "Team A": "#FF0000",
-        "Team B": "#FFFF00",
-        "Team C": "#0000FF",
-    }
+        color_map = {
+            "Team A": "#FF0000",
+            "Team B": "#FFFF00",
+            "Team C": "#0000FF",
+        }
 
-    fig = px.bar(
-        scores,
-        x="score_percent",
-        y="row",
-        color="control",
-        orientation="h",
-        text="score_label",
-        color_discrete_map=color_map,
-    )
+        fig = px.bar(
+            scores,
+            x="score_percent",
+            y="row",
+            color="control",
+            orientation="h",
+            text="score_label",
+            color_discrete_map=color_map,
+        )
 
-    fig.update_layout(
-        barmode="stack",
-        showlegend=False,
-        bargap=0,
-        xaxis=dict(
-            visible=False,
-            range=[0, 100],
-        ),
-        yaxis=dict(
-            visible=False,
-            range=[-0.1, 0.1],
-        ),
-        height=100,
-        margin=dict(l=0, r=0, t=0, b=0),
-        hovermode=False,
-        font=dict(size=18)
-    )
+        fig.update_layout(
+            barmode="stack",
+            showlegend=False,
+            bargap=0,
+            xaxis=dict(
+                visible=False,
+                range=[0, 100],
+            ),
+            yaxis=dict(
+                visible=False,
+                range=[-0.1, 0.1],
+            ),
+            height=100,
+            margin=dict(l=0, r=0, t=0, b=0),
+            hovermode=False,
+            font=dict(size=18)
+        )
 
-    fig.update_traces(
-        marker_line_width=0,
-        width=0.3,
-        textposition="inside",
-        insidetextanchor="middle",
-    )
+        fig.update_traces(
+            marker_line_width=0,
+            width=0.3,
+            textposition="inside",
+            insidetextanchor="middle",
+        )
 
-    st.header("Scoreboard:")
-    st.plotly_chart(
-        fig,
-        width="stretch",
-        config={"displayModeBar": False},
-    )
+        st.header("Scoreboard:")
+        st.plotly_chart(
+            fig,
+            width="stretch",
+            config={"displayModeBar": False},
+        )

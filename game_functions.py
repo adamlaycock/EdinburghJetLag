@@ -14,6 +14,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def update_teams_data(new_team_data):
     conn.update(worksheet="team_mgmt", data=new_team_data)
+    get_teams_data.clear()
 
 @st.cache_data(ttl=5) 
 def get_teams_data():
@@ -32,7 +33,7 @@ def clear_team_data(team_name: str) -> None:
     new_team_data = current_team_data[current_team_data["team_name"]!=team_name]
 
     conn.update(worksheet="team_mgmt", data=new_team_data)
-    st.cache_data.clear()
+    get_teams_data.clear()
 
 def save_containers(containers: dict[str, Container]) -> None:
     df = conn.read(worksheet="container_mgmt", ttl=0)
@@ -51,9 +52,9 @@ def save_containers(containers: dict[str, Container]) -> None:
 
     load_containers.clear()
 
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=10)
 def load_containers() -> Dict[str, Container]:
-    df = conn.read(worksheet="container_mgmt", ttl=0)
+    df = conn.read(worksheet="container_mgmt", ttl=10)
     df = df.dropna(subset=["container_key", "json"])
 
     return {
@@ -61,9 +62,9 @@ def load_containers() -> Dict[str, Container]:
         for _, row in df.iterrows()
     }
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=10)
 def get_cooldowns() -> pd.DataFrame:
-    df = conn.read(worksheet="cooldown_mgmt", ttl=0)
+    df = conn.read(worksheet="cooldown_mgmt", ttl=30)
     df = df.dropna(subset=["team_key", "timestamp"])
 
     return df
@@ -84,6 +85,8 @@ def update_cooldowns(team_keys: List[str], duration: int) -> None:
         )
 
     conn.update(worksheet="cooldown_mgmt", data=df)
+
+    get_cooldowns.clear()
 
 
 def initialise_core_components(
@@ -294,41 +297,44 @@ def count_adjacent_zones(gdf, tolerance=1.0) -> int:
     )
 
 
-def calculate_scores(core_components: Dict[str, Container]) -> pd.DataFrame:
-    containers = {
-        "Team A": core_components["team_a_areas"],
-        "Team B": core_components["team_b_areas"],
-        "Team C": core_components["team_c_areas"],
-        "Unclaimed": core_components["unclaimed_areas"],
-    }
-    dfs = [
-        pd.DataFrame({
-            "name": [item.name for item in container.items],
-            "area": [item.area for item in container.items],
-            "distance": [item.distance for item in container.items],
-            "geometry": [item.geometry for item in container.items],
-            "is_prot": [item.is_prot for item in container.items],
-            "control": control,
-        })
-        for control, container in containers.items()
-    ]
-    full_gdf = gpd.GeoDataFrame(
-        pd.concat(dfs, ignore_index=True),
-        geometry="geometry",
-        crs="EPSG:4326",
-    )
-    full_gdf = full_gdf[full_gdf["control"] != "Unclaimed"]
+def calculate_scores() -> pd.DataFrame:
+    core_components = load_containers()
+    if len(core_components["unclaimed_areas"].items) + len(core_components["challenged_areas"].items)!= 15:
+        containers = {
+            "Team A": core_components["team_a_areas"],
+            "Team B": core_components["team_b_areas"],
+            "Team C": core_components["team_c_areas"],
+            "Unclaimed": core_components["unclaimed_areas"],
+        }
+        dfs = [
+            pd.DataFrame({
+                "name": [item.name for item in container.items],
+                "area": [item.area for item in container.items],
+                "distance": [item.distance for item in container.items],
+                "geometry": [item.geometry for item in container.items],
+                "is_prot": [item.is_prot for item in container.items],
+                "control": control,
+            })
+            for control, container in containers.items()
+        ]
+        full_gdf = gpd.GeoDataFrame(
+            pd.concat(dfs, ignore_index=True),
+            geometry="geometry",
+            crs="EPSG:4326",
+        )
+        full_gdf = full_gdf[full_gdf["control"] != "Unclaimed"]
 
-    adjacency_df = (
-        full_gdf.groupby("control")
-        .apply(count_adjacent_zones, include_groups=False)
-        .reset_index(name="number")
-    )
-    score_df = full_gdf.groupby("control")[["area", "distance"]].sum().reset_index()
-    score_df = score_df.merge(adjacency_df, how="inner", on="control")
-    score_df["score"] = (score_df["area"] + score_df["distance"]) * score_df["number"]
+        adjacency_df = (
+            full_gdf.groupby("control")
+            .apply(count_adjacent_zones, include_groups=False)
+            .reset_index(name="number")
+        )
+        score_df = full_gdf.groupby("control")[["area", "distance"]].sum().reset_index()
+        score_df = score_df.merge(adjacency_df, how="inner", on="control")
+        score_df["score"] = (score_df["area"] + score_df["distance"]) * score_df["number"]
 
-    return score_df[["control", "score"]]
+        return score_df[["control", "score"]]
+    return None
 
 def send_discord_notification(
     msg: str
