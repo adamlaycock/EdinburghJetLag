@@ -65,6 +65,7 @@ with tab2:
                 core_comps["challenge_deck"].transfer_random_item(core_comps["global_challenges"])
             update_cooldowns(["team_a", "team_b", "team_c"], 0)
             save_containers(core_comps)
+            send_discord_notification("A new game has been started!")
 
 with tab3:
     if len(core_comps["unclaimed_areas"].items) + len(core_comps["challenged_areas"].items)!= 15:

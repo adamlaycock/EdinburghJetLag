@@ -43,7 +43,6 @@ def build_player_form() -> None:
             st.cache_data.clear()
             st.rerun()
 
-@st.fragment(run_every="30s")
 def build_team_players(team_data):
     st.header("Current Players:")
 
@@ -58,11 +57,9 @@ def build_team_players(team_data):
 
             with column:
                 st.subheader(f"{team_name}")
-                st.button(
-                    f"Clear {team_name}", 
-                    on_click=clear_team_data,
-                    args=(team_name,)
-                )
+                if st.button(f"Clear {team_name}"):
+                    clear_team_data(team_name)
+                    st.rerun()
                 st.write("")
                 for player in team_players:
                     st.write(f"- {player}")
