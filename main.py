@@ -63,6 +63,7 @@ with tab2:
             for i in range(5):
                 core_comps["challenge_deck"].transfer_random_item(core_comps["global_challenges"])
             update_cooldowns(["team_a", "team_b", "team_c"], 0)
+            core_comps["unclaimed_areas"].get_item_by_name("EH2").start_protection(900)
             save_containers(core_comps)
             send_discord_notification("A new game has been started!")
 
