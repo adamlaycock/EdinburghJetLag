@@ -198,7 +198,7 @@ def build_team_hand(team_name: str):
                         send_discord_notification(msg)
                         st.rerun()
                     else:
-                        choose_target_team(reward_card, team_name, core_components)
+                        choose_target_team(reward_card, team_name)
                     
                 if st.button("Discard Card", key=f"discard_{card_num}"):
                     team_hand.transfer_item(
@@ -388,7 +388,7 @@ def build_start_challenge() -> None:
             st.subheader(challenge_card.name)
             st.write(f"{challenge_card.description}")
         if st.button("Submit"):
-            start_challenge(core_components, team_name, challenge_name, area_name)
+            start_challenge(team_name, challenge_name, area_name)
 
 @st.fragment(run_every="10s")
 def build_scoreboard(scores: pd.DataFrame) -> None:

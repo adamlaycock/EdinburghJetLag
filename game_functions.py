@@ -228,11 +228,11 @@ def find_area_by_name(
     return None
 
 def start_challenge(
-    core_components: Dict[str, Container],
     team_name: str,
     challenge_name: str,
     challenge_area: str
 ):
+    core_components = load_containers()
     team_name = team_name.lower().replace(" ", "_")
     active_container = core_components[f"{team_name}_active"]
     areas_container = core_components[f"{team_name}_areas"]
