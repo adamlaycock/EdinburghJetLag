@@ -113,6 +113,11 @@ def build_game_map(core_components) -> None:
             "fillOpacity": 0.25,
         }
 
+    bounds = full_gdf.total_bounds
+    minx, miny, maxx, maxy = bounds
+    center_lat = (miny + maxy) / 2
+    center_lon = (minx + maxx) / 2
+
     m = full_gdf.explore(
         column="control",
         cmap=colors,
@@ -122,20 +127,18 @@ def build_game_map(core_components) -> None:
         popup=["name", "control", "is_prot"],
         tiles="OpenStreetMap",
         style_kwds={"style_function": style_status},
+        zoom_start=12.5,
+        location=[center_lat, center_lon]
     )
 
     for key in list(m._children):
         if "legend" in key.lower():
             del m._children[key]
 
-    bounds = full_gdf.total_bounds
-    minx, miny, maxx, maxy = bounds
-
-    m.fit_bounds([[miny, minx], [maxy, maxx]])
+    m.options["minZoom"] = 12.5
     m.options["maxBounds"] = [[miny, minx], [maxy, maxx]]
-    m.options["maxBoundsViscosity"] = 1
-    m.options["zoomSnap"] = 0.75
-    m.options["minZoom"] = 11.5
+    m.options["maxBoundsViscosity"] = 1.0
+    m.options["zoomSnap"] = 0.1
 
     st.header("Map:")
     st_folium(m, width="stretch", height=500, returned_objects=[])
@@ -379,7 +382,6 @@ def build_start_challenge(core_components: Dict[str, Any]) -> None:
             start_challenge(core_components, team_name, challenge_name, area_name)
 
 def build_scoreboard(scores: pd.DataFrame) -> None:
-
     total_score = scores["score"].sum()
     scores["score_percent"] = (scores["score"] / total_score) * 100
     scores["row"] = "Score"
