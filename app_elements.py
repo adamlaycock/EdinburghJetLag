@@ -392,7 +392,7 @@ def build_start_challenge() -> None:
 
 @st.fragment(run_every="10s")
 def build_scoreboard(scores: pd.DataFrame) -> None:
-    if not scores.empty:
+    if scores != None:
         total_score = scores["score"].sum()
         scores["score_percent"] = (scores["score"] / total_score) * 100
         scores["row"] = "Score"
