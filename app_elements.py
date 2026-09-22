@@ -18,6 +18,18 @@ CONN = st.connection("gsheets", type=GSheetsConnection)
 TEAMS = ["Team A", "Team B", "Team C"]
 
 def build_player_form() -> None:
+    """Creates a streamlit form which allows users to
+    add themselves to a team. Once a name and team have been decided upon, the
+    function calls update_teams_data() to store the information externally
+    using a GSheets connection.
+
+    Args:
+        None
+
+    Returns:
+        None
+
+    """
     with st.form("add_player_form", clear_on_submit=True):
         st.header('Add Players')
         name = st.text_input("Enter player name:", key="add_player")
@@ -43,7 +55,22 @@ def build_player_form() -> None:
             st.cache_data.clear()
             st.rerun()
 
-def build_team_players(team_data):
+def build_team_players(
+        team_data: pd.DataFrame
+) -> tuple[list[str], list[str], list[str]]:
+    """Builds streamlit columns capable of showing which players are currently
+    assigned to each team based on data pulled from the GSheets connection. 
+    Also includes the ability to clear all players on a specific team by 
+    calling clear_team_data() with the team name.
+
+    Args:
+        team_data (pd.DataFrame): Dataframe storing player names and associated
+                                  teams.
+
+    Returns:
+        tuple[list[str], list[str], list[str]]: Player names in each team.
+    
+    """
     st.header("Current Players:")
 
     players_by_team = {name: [] for name in TEAMS}
@@ -72,6 +99,20 @@ def build_team_players(team_data):
 
 @st.fragment(run_every="10s")
 def build_game_map() -> None:
+    """Handles the construction and formatting of the game map. Initially calls
+    load_containers() to pull in the latest game data, before constructing a 
+    GeoPandas GeoDataFrame from Area instance attributes. The function also 
+    handles the formatting of areas, reflecting current area control and 
+    protection status. It also constructs a map using folium, and displays it 
+    through streamlit.
+
+    Args:
+        None
+
+    Returns:
+        None
+    
+    """
     core_components = load_containers()
 
     containers = {
@@ -147,6 +188,17 @@ def build_game_map() -> None:
 
 @st.fragment(run_every="10s") 
 def build_global_challenges() -> None:
+    """Handles the construction of the game's currently available challenges.
+    Pulls challenge information from the global_challenges container, which is
+    stored externally and retrieved via load_containers().
+
+    Args:
+        None
+
+    Returns:
+        None
+    
+    """
     core_components = load_containers()
     global_challenges = core_components["global_challenges"]
 
@@ -161,7 +213,23 @@ def build_global_challenges() -> None:
                 st.write(f"{challenge_card.description}")
 
 @st.fragment(run_every="10s")
-def build_team_hand(team_name: str):
+def build_team_hand(team_name: str) -> None:
+    """Handles the construction and usage of cards which are currently present
+    in a specific team's hand. Pulls hand and card information from a team's 
+    hand container, based on team_name argument, which is stored externally and
+    retrieved via load_containers(). Alongside displaying the cards, it also
+    implements functionality for their disposal and usage, with an exception
+    made for the cards used to shuffle the global challenges. Game
+    notifications are also processed using the send_discord_notification()
+    function.
+
+    Args:
+        team_name (str): Capitalised team name, such as "Team A".
+
+    Returns:
+        None
+    
+    """
     core_components = load_containers()
     team_name = team_name.lower().replace(" ", "_")
 
@@ -179,7 +247,9 @@ def build_team_hand(team_name: str):
                 if st.button("Use Card", key=f"use_{card_num}"):
                     if reward_card.reward_type == "powerup":
                         if "Shuffle Challenges" in reward_card.name:
-                            num_cards = random.randint(2, len(core_components["global_challenges"].items))
+                            num_cards = random.randint(
+                                2, len(core_components["global_challenges"].items)
+                            )
                             for i in range(num_cards):
                                 core_components["global_challenges"].transfer_random_item(
                                     core_components["challenge_deck"]
@@ -213,7 +283,19 @@ def build_team_hand(team_name: str):
             st.write("Complete challenges to gain new reward cards.")
 
 @st.fragment(run_every="10s")
-def build_team_active(team_name:str):
+def build_team_active(team_name: str) -> None:
+    """Responsible for displaying a team's active challenge if they have
+    started one, alongside managing functionality to complete or abandon the
+    active challenge. This functional handles the movement of cards and areas,
+    sends corresponding game notifications, and starts challenge cooldowns.
+
+    Args:
+        team_name (str): Captialised team_name, such as "Team A".
+
+    Returns:
+        None
+    
+    """
     core_components = load_containers()
     team_name = team_name.lower().replace(" ", "_")
 
@@ -282,7 +364,20 @@ def build_team_active(team_name:str):
 @st.fragment(run_every="10s")
 def build_team_curses(
     team_name: str
-):
+) -> None:
+    """Responsible for the constrction and clearance of a team's active curses,
+    if present. Similarly to other app element functions, this function
+    initially pulls container data via the GSheets connection. It also handles
+    curse-related game notifications and the movement of curse cards from a
+    team's container to the discard deck container.
+
+    Args:
+        team_name (str): Capitalised team name, such as "Team A".
+
+    Returns:
+        None
+    
+    """
     core_components = load_containers()
     team_name = team_name.lower().replace(" ", "_")
     team_curses = core_components[f"{team_name}_curses"]
@@ -313,7 +408,22 @@ def build_team_curses(
 
 
 @st.dialog("Choose Target Team")
-def choose_target_team(reward_card: Any, team_name: str):
+def choose_target_team(reward_card: RewardCard, team_name: str) -> None:
+    """Builds a streamlit dialog popup which allows users to target specific
+    teams to play curse cards on. This function also contains the functionality
+    to move those curse cards between team hand and team curse containers,
+    alongside sending game updates to alert the targeted team and others.
+
+    Args:
+        reward_card (RewardCard): RewardCard instance with the "curse" 
+                                  reward_type attribute.
+
+        team_name (str): Capitalised team name, such as "Team A".
+
+    Returns:
+        None
+    
+    """
     core_components = load_containers()
     st.write(f"Select a target team to apply **{reward_card.name}**:")
     
@@ -344,10 +454,20 @@ def choose_target_team(reward_card: Any, team_name: str):
         else:
             st.error("Please select a team.")
 
-from typing import Dict, Any
-
 @st.dialog("Start a Challenge")
 def build_start_challenge() -> None:
+    """Builds a streamlit dialog popup which allows users to choose a team,
+    game area, and challenge to start. Once those are selected, this function
+    calls start_challenge() to handle card and area movement, and check for
+    exceptions, including protected areas or challenge cooldowns.
+
+    Args:
+        None
+
+    Returns:
+        None
+
+    """
     core_components = load_containers()
     team_name = st.selectbox(
         "Select a team:",
@@ -392,6 +512,19 @@ def build_start_challenge() -> None:
 
 @st.fragment(run_every="10s")
 def build_scoreboard(scores: pd.DataFrame) -> None:
+    """This function handles the construction and display of the game's
+    scoreboard, primarily achieved through a highly modified plotly barchart,
+    using a pandas DataFrame returned from the calculate_scores() function.
+
+    Args:
+        scores (pd.DataFrame): pandas DataFrame constructed by
+                               calculate_scores(), using container data from
+                               load_containers().
+
+    Returns:
+        None
+    
+    """
     if scores is not None:
         total_score = scores["score"].sum()
         scores["score_percent"] = (scores["score"] / total_score) * 100
