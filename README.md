@@ -1,10 +1,13 @@
-# EdinburghJetLag
-A real-life board game application for Edinburgh-based fans of the show Jet Lag: The Game.
+# [EdinburghJetLag](https://edinburghjetlag.streamlit.app/)
+A real-life board game application for Edinburgh-based fans of the show Jet Lag: The Game.  
+
 
 ## Overview
 EdinburghJetLag is an interactive application which allows to users to use the city of Edinburgh as their real-life game board, where they can travel around the city and complete challenges to capture different areas. 
 These challenges also garner reward cards which can be used to supercharge your own team, or interfere with the activities of others. The game itself is heavily inspired by the popular travel competition show, [Jet Lag: The Game](https://www.youtube.com/@jetlagthegame),
-with a particular focus on the territory mechanics from [Schengen Showdown (Season 13)](https://nebula.tv/jetlag/season/13) and the challenge/reward mechanics from [Japanorama (Season 19)](https://nebula.tv/jetlag/season/19). The application is built entirely in Python, using popular libraries for the data manipulation, graphing, and frontend interactivity, coupled with Discord webhooks and the Google Cloud for external connections.
+with a particular focus on the territory mechanics from [Schengen Showdown (Season 13)](https://nebula.tv/jetlag/season/13) and the challenge/reward mechanics from [Japanorama (Season 19)](https://nebula.tv/jetlag/season/19). The application is built entirely in Python, using popular libraries for the data manipulation, graphing, and frontend interactivity, coupled with Discord webhooks and the Google Cloud for external connections.   
+
+The latest live version is available at [edinburghjetlag.streamlit.app](https://edinburghjetlag.streamlit.app/).
 
 ## Demonstrations
 ### Adding and Altering Team Players:
@@ -18,10 +21,6 @@ with a particular focus on the territory mechanics from [Schengen Showdown (Seas
 
 ### Team Challenges, Curses, and Hands:
 <img width="634" height="932" alt="Player Hands" src="https://github.com/user-attachments/assets/1ec3dbe1-a949-4c4e-ac5a-2a19acae0a09" />
-
-
-
-
 
 ## Acknowledgements
 I would like to thank Mads Machlachlan, [Sophia Thrash](https://github.com/sophiathrash), and [Helen Miller](https://github.com/helenrmiller) for their invaluable contributions to the general design of this project, particularly surrounding challenge suggestions and game mechanics. 
