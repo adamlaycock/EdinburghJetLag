@@ -1,4 +1,0 @@
-- [ ] Area Protection Mechanics
-- [ ] Upgrade Notification System
-- [ ] Passwords for Team Visibility
-- [ ] Error Handling/Feedback

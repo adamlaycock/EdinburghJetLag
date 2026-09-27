@@ -12,12 +12,35 @@ import numpy as np
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-def update_teams_data(new_team_data):
+def update_teams_data(new_team_data: pd.DataFrame) -> None:
+    """Connects to the Google spreadsheet and updates the "team_mgmt" sheet 
+    with new player information. It also clears the cached data retrieved by
+    get_teams_data().
+
+    Args:
+        new_team_data (pd.DataFrame): pandas DataFrame containing the new
+                                      player information.
+
+    Returns:
+        None
+    
+    """
     conn.update(worksheet="team_mgmt", data=new_team_data)
     get_teams_data.clear()
 
 @st.cache_data(ttl=5) 
-def get_teams_data():
+def get_teams_data() -> pd.DataFrame:
+    """Connects to the Google spreadsheet and retrieves the current data stored
+    in the "team_mgmt" sheet.
+
+    Args:
+        None
+
+    Returns:
+        df (pd.DataFrame): pandas DataFrame containing the player information
+                           currently stored in "team_mgmt".
+    
+    """
     df = conn.read(worksheet='team_mgmt')
     if df.empty:
         return pd.DataFrame({
@@ -28,6 +51,17 @@ def get_teams_data():
         return df
 
 def clear_team_data(team_name: str) -> None:
+    """Clears the players currently associated with a specific team, specified
+    by the team_name argument. Also clears the cached data retrieved by
+    get_teams_data().
+
+    Args:
+        team_name (str): Name of the team to be cleared.
+
+    Returns:
+        None
+    
+    """
     current_team_data = get_teams_data()
 
     new_team_data = current_team_data[current_team_data["team_name"]!=team_name]
@@ -36,6 +70,17 @@ def clear_team_data(team_name: str) -> None:
     get_teams_data.clear()
 
 def save_containers(containers: dict[str, Container]) -> None:
+    """Saves the current state of game-essential container instances. Also
+    conducts the JSON serialisation of the containers during the saving 
+    process.
+
+    Args:
+        containers (dict[str, Container]): Dictionary of container instances.
+
+    Returns:
+        None
+    
+    """
     df = conn.read(worksheet="container_mgmt", ttl=0)
     df["json"] = df["json"].astype("object")
 
@@ -54,6 +99,18 @@ def save_containers(containers: dict[str, Container]) -> None:
 
 @st.cache_data(ttl=10)
 def load_containers() -> Dict[str, Container]:
+    """Loads the JSON data stored in the "container_mgmt" google sheet and then
+    deserialises the JSON information back into Container instances before
+    aggregating them into a dictionary.
+
+    Args:
+        None
+    
+        Returns:
+            Dict[str, Container]: Contains Container instances that hold game
+                                  information.
+
+    """
     df = conn.read(worksheet="container_mgmt", ttl=10)
     df = df.dropna(subset=["container_key", "json"])
 
@@ -64,12 +121,35 @@ def load_containers() -> Dict[str, Container]:
 
 @st.cache_data(ttl=10)
 def get_cooldowns() -> pd.DataFrame:
+    """Pulls cooldown data from the "cooldown_mgmt" sheet and returns the team
+    and cooldown timestamp as a pandas DataFrame.
+
+    Args:
+        None
+
+    Returns:
+        df (pd.DataFrame): pandas DataFrame containing team cooldown 
+                           information.
+    
+    """
     df = conn.read(worksheet="cooldown_mgmt", ttl=30)
     df = df.dropna(subset=["team_key", "timestamp"])
 
     return df
 
 def update_cooldowns(team_keys: List[str], duration: int) -> None:
+    """Updates challenge cooldown data when called by creating new timestamps
+    for teams specified in the team_keys list.
+
+    Args:
+        team_keys (List[str]): Holds team names to start cooldowns for.
+
+        duration (int): Number of seconds that the cooldown should last for.
+
+    Returns:
+        None
+    
+    """
     df = conn.read(worksheet="cooldown_mgmt", ttl=0)
 
     for team_key in team_keys:
@@ -94,6 +174,22 @@ def initialise_core_components(
     team_b_players: List[str],
     team_c_players: List[str],
 ) -> Dict[str, Container]:
+    """Creates the core Container instances and sets the values for their
+    attributes before returning them as a dictionary. Also creates the Area 
+    instances from the GeoJSON file.
+
+    Args:
+        team_a_players (List[str]): List containing players names for Team A.
+
+        team_b_players (List[str]): List containing players names for Team B.
+
+        team_c_players (List[str]): List containing players names for Team C.
+
+    Returns:
+        Dict[str, Container]: Dictionary containiner the game's core container
+                              instances.
+    
+    """
 
     gdf = gpd.read_file("MapData/Board/GameBoard.geojson")
     gdf_areas = [
@@ -161,6 +257,18 @@ def initialise_core_components(
     }
 
 def get_current_area() -> Optional[tuple[str, float]]:
+    """Gets the player's current location using streamlit_geolocation() and
+    checks which zone the current coordinates are located within.
+
+    Args:
+        None
+
+    Returns:
+        Optional[tuple[str, float]]: Tuple containing current zone and location
+                                     accuracy. Tuple will only be returned if
+                                     the current coordinates are within a zone.
+    
+    """
     st.header("Get Current Zone:")
     geolocation = streamlit_geolocation()
 
@@ -182,9 +290,19 @@ def get_current_area() -> Optional[tuple[str, float]]:
 
     return (matching_polygon.iloc[0]["name"], accuracy)
 
-def initialise_decks(mode: str) -> None:
+def initialise_decks(mode: str) -> List[Card]:
+    """Uses static CSV files to build challenge and reward Card instances.
+
+    Args:
+        mode (str): String which determines which list of Card instances will
+                    be returned by the function.
+
+    Returns:
+        List[Card]: List of either ChallengeCard or RewardCard instances.
+    
+    """
     challenge_df = pd.read_csv(
-        "challenge_cards.csv",
+        "CardData/challenge_cards.csv",
         quotechar='"'
     )
     challenge_items = [
@@ -193,7 +311,7 @@ def initialise_decks(mode: str) -> None:
     ]
 
     reward_df = pd.read_csv(
-        "reward_cards.csv",
+        "CardData/reward_cards.csv",
         quotechar='"'
     )
     reward_items = [
@@ -207,10 +325,27 @@ def initialise_decks(mode: str) -> None:
     return reward_items
 
 def find_area_by_name(
-    area_name: str,
-    core_comps: Dict[str, Container],
-    exclusion: Optional[str],
-) -> Optional[tuple[Any, str]]:
+    area_name: str, core_comps: Dict[str, Container], exclusion: Optional[str],
+) -> Optional[tuple[Area, str]]:
+    """Checks which Area Container instance an Area instance is currently 
+    stored in.
+
+    Args:
+        area_name (str): Name of the area to be located. Should match an Area's
+                         name attribute.
+
+        core_comps (Dict[str, Container]): Dictionary container the core
+                                           Container instances.
+
+        exclusion (Optional[str]): Name of an Area Container that should not be
+                                   included in the current search.
+
+    Returns:
+        Optional[tuple[Area, str]]: Tuple containing the Area instance and the
+                                    name of the Container that it is currently
+                                    stored in.
+    
+    """
     container_names = [
         "team_a_areas", "team_b_areas", "team_c_areas", "unclaimed_areas",
     ]
@@ -228,10 +363,26 @@ def find_area_by_name(
     return None
 
 def start_challenge(
-    team_name: str,
-    challenge_name: str,
-    challenge_area: str
-):
+        team_name: str, challenge_name: str, challenge_area: str
+) -> None:
+    """Performs checks that need to be cleared before starting a challenge,
+    such as checking Area protection and team challenge cooldowns. If
+    successful, the function moves the necessary Card and Area instances
+    between Containers before saving the current Container states and sending
+    challenge-related discord notifications.
+
+    Args:
+        team_name (str): Name of the team who are attempting to start a
+                         challenge.
+
+        challenge_name (str): Name of the selected ChallengeCard instance.
+
+        challenge_area (str): Name of the selected Area to be challenged.
+
+    Returns:
+        None
+    
+    """
     core_components = load_containers()
     team_name = team_name.lower().replace(" ", "_")
     active_container = core_components[f"{team_name}_active"]
@@ -251,7 +402,9 @@ def start_challenge(
                         challenge_name
                     )
                     if challenge_card is not None:
-                        challenge_card.start_challenge(challenge_area, original_container.name)
+                        challenge_card.start_challenge(
+                            challenge_area, original_container.name
+                        )
                         core_components["global_challenges"].transfer_item(
                             challenge_card,
                             active_container
@@ -277,7 +430,22 @@ def start_challenge(
     else:
         st.error("Your team's challenge cooldown has not yet expired!")
 
-def count_adjacent_zones(gdf, tolerance=1.0) -> int:
+def count_adjacent_zones(gdf: gpd.GeoDataFrame, tolerance=1.0) -> int:
+    """Finds, and then returns the size of, the largest group of connected 
+    geometries in the GeoPandas GeoDataFrame, providing that the geometries are
+    within a one metre tolerance of each other.
+
+    Args:
+        gdf (gpd.GeoDataFrame): GeoPandas GeoDataFrame containing geometries to
+                                compare.
+        
+        tolerance (float): Distance, in metres, that two geometries have to be
+                           located within to be considered connected.
+
+    Returns:
+        int: Maximum number of connected geometries.
+    
+    """
     projected = gdf.to_crs("EPSG:27700")
 
     G = nx.Graph()
@@ -297,7 +465,19 @@ def count_adjacent_zones(gdf, tolerance=1.0) -> int:
     )
 
 
-def calculate_scores() -> pd.DataFrame:
+def calculate_scores() -> Optional[pd.DataFrame]:
+    """Calculates each Team's scores based on the area and distance properties 
+    of the zones that they control, and how of those zones are directly connected.
+
+    Args:
+        None
+
+    Returns:
+        pd.DataFrame: pandas DataFrame containing each team and their score at
+                      the current time. This will not be returned if all zones
+                      are uncaptured.
+    
+    """
     core_components = load_containers()
     if len(core_components["unclaimed_areas"].items) + len(core_components["challenged_areas"].items)!= 15:
         containers = {
@@ -336,9 +516,18 @@ def calculate_scores() -> pd.DataFrame:
         return score_df[["control", "score"]]
     return None
 
-def send_discord_notification(
-    msg: str
-) -> None:
+def send_discord_notification(msg: str) -> None:
+    """Sends a custom discord notification via a webhook integration. Also
+    includes team IDs to personalise the notifications that are sent.
+
+    Args:
+        msg (str): Message text.
+
+    Returns:
+        None
+    
+    """
+
 
     TEAM_MAPPING = {
         "team_a": "<@&1545068980996145182>",
