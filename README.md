@@ -25,4 +25,4 @@ The latest live version is available at [edinburghjetlag.streamlit.app](https://
 ## Acknowledgements
 I would like to thank Mads Machlachlan, [Sophia Thrash](https://github.com/sophiathrash), and [Helen Miller](https://github.com/helenrmiller) for their invaluable contributions to the general design of this project, particularly surrounding challenge suggestions and game mechanics. 
   
-Postal distict boundary data was sourced from the University of Edinburgh DataShare, specifically "GB Postcode Area, Sector, District" by Addy Pope (2017), [DOI: 10.7488/ds/1947](https://doi.org/10.7488/ds/1947).
+Postal distict boundary data were sourced from the University of Edinburgh DataShare, specifically "GB Postcode Area, Sector, District" by Addy Pope (2017), [DOI: 10.7488/ds/1947](https://doi.org/10.7488/ds/1947).
