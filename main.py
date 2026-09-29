@@ -2,8 +2,6 @@ from app_elements import *
 from container_management import *
 from game_functions import *
 
-teams_data = get_teams_data()
-
 if "authenticated_team" not in st.session_state:
     st.session_state["authenticated_team"] = None
 
@@ -49,7 +47,7 @@ with tab1:
 with tab2:
     build_player_form()
     st.write("---")
-    a_players, b_players, c_players = build_team_players(teams_data)
+    a_players, b_players, c_players = build_team_players()
     st.write("---")
 
     if any([a_players, b_players, c_players]):

@@ -1,6 +1,5 @@
 import streamlit as st
 from streamlit_folium import st_folium
-from streamlit_gsheets import GSheetsConnection
 from streamlit_geolocation import streamlit_geolocation
 import pandas as pd
 import geopandas as gpd
@@ -13,15 +12,13 @@ import re
 import plotly.express as px
 import random
 
-CONN = st.connection("gsheets", type=GSheetsConnection)
-
 TEAMS = ["Team A", "Team B", "Team C"]
 
 def build_player_form() -> None:
     """Creates a streamlit form which allows users to
     add themselves to a team. Once a name and team have been decided upon, the
     function calls update_teams_data() to store the information externally
-    using a GSheets connection.
+    using a SQL database connection.
 
     Args:
         None
@@ -41,36 +38,24 @@ def build_player_form() -> None:
         submitted = st.form_submit_button("Add Player")
 
         if submitted and name and team:
-            current_team_data = get_teams_data()
+            update_teams_data(name, team)
+            st.rerun(scope="app")
 
-            new_row = pd.DataFrame({
-                "team_name": [team],
-                "player_name": [name]
-            })
-
-            new_team_data = pd.concat(
-                [current_team_data, new_row], ignore_index=True
-            )
-            update_teams_data(new_team_data)
-            st.cache_data.clear()
-            st.rerun()
-
-def build_team_players(
-        team_data: pd.DataFrame
-) -> tuple[list[str], list[str], list[str]]:
+@st.fragment(run_every="10s")
+def build_team_players() -> tuple[list[str], list[str], list[str]]:
     """Builds streamlit columns capable of showing which players are currently
-    assigned to each team based on data pulled from the GSheets connection. 
+    assigned to each team based on data pulled from the database connection. 
     Also includes the ability to clear all players on a specific team by 
     calling clear_team_data() with the team name.
 
     Args:
-        team_data (pd.DataFrame): Dataframe storing player names and associated
-                                  teams.
+        None
 
     Returns:
         tuple[list[str], list[str], list[str]]: Player names in each team.
     
     """
+    team_data = get_teams_data()
     st.header("Current Players:")
 
     players_by_team = {name: [] for name in TEAMS}
@@ -86,7 +71,7 @@ def build_team_players(
                 st.subheader(f"{team_name}")
                 if st.button(f"Clear {team_name}"):
                     clear_team_data(team_name)
-                    st.rerun()
+                    st.rerun(scope="app")
                 st.write("")
                 for player in team_players:
                     st.write(f"- {player}")
@@ -266,7 +251,7 @@ def build_team_hand(team_name: str) -> None:
                             {{{team_name}}} has used **{reward_card.name}**!
                         """
                         send_discord_notification(msg)
-                        st.rerun()
+                        st.rerun(scope="app")
                     else:
                         choose_target_team(reward_card, team_name)
                     
@@ -276,7 +261,7 @@ def build_team_hand(team_name: str) -> None:
                         core_components["discard_deck"]
                     )
                     save_containers(core_components)
-                    st.rerun()
+                    st.rerun(scope="app")
     else:
         with st.container(border=True):
             st.write("Your hand is currently empty.")
@@ -335,7 +320,7 @@ def build_team_active(team_name: str) -> None:
                         )
                         save_containers(core_components)
                         update_cooldowns([team_name], 600)
-                        st.rerun()
+                        st.rerun(scope="app")
                     else:
                         st.error("You must use or discard a card from your hand before completing this challenge.")
                         time.sleep(5)
@@ -355,7 +340,7 @@ def build_team_active(team_name: str) -> None:
                     )
                     save_containers(core_components)
                     update_cooldowns([team_name], 600)
-                    st.rerun()
+                    st.rerun(scope="app")
     else:
         with st.container(border=True):
             st.write("Your team has no active challenge.")
@@ -367,7 +352,7 @@ def build_team_curses(
 ) -> None:
     """Responsible for the constrction and clearance of a team's active curses,
     if present. Similarly to other app element functions, this function
-    initially pulls container data via the GSheets connection. It also handles
+    initially pulls container data via the database connection. It also handles
     curse-related game notifications and the movement of curse cards from a
     team's container to the discard deck container.
 
@@ -400,7 +385,7 @@ def build_team_curses(
                         """
                         send_discord_notification(msg)
                         save_containers(core_components)
-                        st.rerun()
+                        st.rerun(scope="app")
     else:
         with st.container(border=True):
             st.write("Your team has no active curses.")
@@ -448,7 +433,7 @@ def choose_target_team(reward_card: RewardCard, team_name: str) -> None:
                     {{{team_name}}} has cast **{reward_card.name}** on {{{recipient}}}!
                 """
                 send_discord_notification(msg)
-                st.rerun()
+                st.rerun(scope="app")
             else:
                 st.error("The target team has already reached the maximum number of curses.")
         else:

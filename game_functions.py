@@ -1,7 +1,6 @@
 from container_management import *
 import pandas as pd
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
 import geopandas as gpd
 from shapely.geometry import Point
 from streamlit_geolocation import streamlit_geolocation
@@ -9,13 +8,13 @@ from typing import Optional
 import requests
 import networkx as nx
 import numpy as np
+from sqlalchemy import text
 
-conn = st.connection("gsheets", type=GSheetsConnection)
+CONN = st.connection("postgresql", type="sql")
 
-def update_teams_data(new_team_data: pd.DataFrame) -> None:
-    """Connects to the Google spreadsheet and updates the "team_mgmt" sheet 
-    with new player information. It also clears the cached data retrieved by
-    get_teams_data().
+def update_teams_data(name: str, team: str) -> None:
+    """Connects to the database and updates the "team_mgmt" table with new 
+    player information.
 
     Args:
         new_team_data (pd.DataFrame): pandas DataFrame containing the new
@@ -25,13 +24,26 @@ def update_teams_data(new_team_data: pd.DataFrame) -> None:
         None
     
     """
-    conn.update(worksheet="team_mgmt", data=new_team_data)
-    get_teams_data.clear()
+    update_params = [
+        {
+            "team_name": team,
+            "player_name": name
+        }
+    ]
 
-@st.cache_data(ttl=5) 
+    with CONN.session as s:
+        query = text("""
+            INSERT INTO team_mgmt (team_name, player_name)
+            VALUES (:team_name, :player_name)
+        """)
+        
+        if update_params:
+            s.execute(query, update_params)
+            s.commit()
+
 def get_teams_data() -> pd.DataFrame:
-    """Connects to the Google spreadsheet and retrieves the current data stored
-    in the "team_mgmt" sheet.
+    """Connects to the database and retrieves the current data stored
+    in the "team_mgmt" table.
 
     Args:
         None
@@ -41,7 +53,12 @@ def get_teams_data() -> pd.DataFrame:
                            currently stored in "team_mgmt".
     
     """
-    df = conn.read(worksheet='team_mgmt')
+    query = """
+        SELECT *
+        FROM team_mgmt;
+    """
+    df = CONN.query(query, ttl=0)
+
     if df.empty:
         return pd.DataFrame({
             "team_name": [],
@@ -52,8 +69,7 @@ def get_teams_data() -> pd.DataFrame:
 
 def clear_team_data(team_name: str) -> None:
     """Clears the players currently associated with a specific team, specified
-    by the team_name argument. Also clears the cached data retrieved by
-    get_teams_data().
+    by the team_name argument.
 
     Args:
         team_name (str): Name of the team to be cleared.
@@ -62,44 +78,24 @@ def clear_team_data(team_name: str) -> None:
         None
     
     """
-    current_team_data = get_teams_data()
+    update_params = [
+        {
+            "team_name": team_name
+        }
+    ]
 
-    new_team_data = current_team_data[current_team_data["team_name"]!=team_name]
+    with CONN.session as s:
+        query = text("""
+            DELETE
+            FROM team_mgmt
+            WHERE team_name = :team_name;
+        """)
+        if update_params:
+            s.execute(query, update_params)
+            s.commit()
 
-    conn.update(worksheet="team_mgmt", data=new_team_data)
-    get_teams_data.clear()
-
-def save_containers(containers: dict[str, Container]) -> None:
-    """Saves the current state of game-essential container instances. Also
-    conducts the JSON serialisation of the containers during the saving 
-    process.
-
-    Args:
-        containers (dict[str, Container]): Dictionary of container instances.
-
-    Returns:
-        None
-    
-    """
-    df = conn.read(worksheet="container_mgmt", ttl=0)
-    df["json"] = df["json"].astype("object")
-
-    for container in containers.values():
-        container_key = container.name
-        json_string = container.to_json(indent=None)
-
-        mask = df["container_key"] == container_key
-
-        if mask.any():
-            df.loc[mask, "json"] = json_string
-
-    conn.update(worksheet="container_mgmt", data=df)
-
-    load_containers.clear()
-
-@st.cache_data(ttl=10)
 def load_containers() -> Dict[str, Container]:
-    """Loads the JSON data stored in the "container_mgmt" google sheet and then
+    """Loads the JSON data stored in the "container_mgmt" table and then
     deserialises the JSON information back into Container instances before
     aggregating them into a dictionary.
 
@@ -111,7 +107,11 @@ def load_containers() -> Dict[str, Container]:
                                   information.
 
     """
-    df = conn.read(worksheet="container_mgmt", ttl=10)
+    query = """
+        SELECT *
+        FROM container_mgmt;
+    """
+    df = CONN.query(query, ttl=0)
     df = df.dropna(subset=["container_key", "json"])
 
     return {
@@ -119,9 +119,8 @@ def load_containers() -> Dict[str, Container]:
         for _, row in df.iterrows()
     }
 
-@st.cache_data(ttl=10)
 def get_cooldowns() -> pd.DataFrame:
-    """Pulls cooldown data from the "cooldown_mgmt" sheet and returns the team
+    """Pulls cooldown data from the "cooldown_mgmt" table and returns the team
     and cooldown timestamp as a pandas DataFrame.
 
     Args:
@@ -132,7 +131,11 @@ def get_cooldowns() -> pd.DataFrame:
                            information.
     
     """
-    df = conn.read(worksheet="cooldown_mgmt", ttl=30)
+    query = """
+        SELECT *
+        FROM cooldown_mgmt;
+    """
+    df = CONN.query(query, ttl=0)
     df = df.dropna(subset=["team_key", "timestamp"])
 
     return df
@@ -150,23 +153,25 @@ def update_cooldowns(team_keys: List[str], duration: int) -> None:
         None
     
     """
-    df = conn.read(worksheet="cooldown_mgmt", ttl=0)
+    update_params = [
+        {
+            "team_key": team_key,
+            "timestamp": time.time() + duration
+        }
+        for team_key in team_keys
+    ]
 
-    for team_key in team_keys:
-        df = df[df["team_key"] != team_key]
+    with CONN.session as s:
+        query = text("""
+            UPDATE cooldown_mgmt
+            SET timestamp = :timestamp
+            WHERE team_key = :team_key
+        """)
+        
+        if update_params:
+            s.execute(query, update_params)
+            s.commit()
 
-        new_row = pd.DataFrame({
-            "team_key": [team_key],
-            "timestamp": [time.time() + duration]
-        })
-
-        df = pd.concat(
-            [df, new_row], ignore_index=True
-        )
-
-    conn.update(worksheet="cooldown_mgmt", data=df)
-
-    get_cooldowns.clear()
 
 
 def initialise_core_components(
@@ -418,7 +423,7 @@ def start_challenge(
                             {{{team_name}}} has started **{challenge_name}** in the **{challenge_area}** zone!
                         """
                         send_discord_notification(msg)
-                        st.rerun()
+                        st.rerun(scope="app")
                     else:
                         st.error("This challenge is no longer available!")
                 else:
@@ -527,8 +532,6 @@ def send_discord_notification(msg: str) -> None:
         None
     
     """
-
-
     TEAM_MAPPING = {
         "team_a": "<@&1545068980996145182>",
         "team_b": "<@&1545069081256788018>",
@@ -551,3 +554,34 @@ def send_discord_notification(msg: str) -> None:
     }
 
     requests.post(st.secrets["discord_webhook"], json=payload)
+
+def save_containers(containers: dict[str, Container]) -> None:
+    """Saves the current state of game-essential container instances. Also
+    conducts the JSON serialisation of the containers during the saving 
+    process.
+
+    Args:
+        containers (dict[str, Container]): Dictionary of container instances.
+
+    Returns:
+        None
+    
+    """
+    update_params = [
+        {
+            "container_key": container.name,
+            "json_data": container.to_json(indent=None) 
+        }
+        for container in containers.values()
+    ]
+
+    with CONN.session as s:
+        query = text("""
+            UPDATE container_mgmt
+            SET json = :json_data
+            WHERE container_key = :container_key
+        """)
+        
+        if update_params:
+            s.execute(query, update_params)
+            s.commit()
